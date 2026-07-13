@@ -486,7 +486,100 @@
     <section class="card" style="margin-top:18px">
       <h2>קריטריוני הבחירה</h2>
       <div class="criteria">
-        <div class="criterion"><span>20%</span><h3>איכות ונגישות</h3><p>תרגום ממצאים לשפה…1825 tokens truncated…<span class="hint">מי יכול לסייע להגיע לקהל או להפעיל? לדוגמה: בתי ספר לנהיגה, מועצות מקומיות ועמותות בטיחות.</span>
+        <div class="criterion"><span>20%</span><h3>איכות ונגישות</h3><p>תרגום ממצאים לשפה ברורה, ידידותית ומותאמת לקהל.</p></div>
+        <div class="criterion"><span>20%</span><h3>חדשנות ויצירתיות</h3><p>אלמנט מקורי שמושך תשומת לב ומעורר סקרנות.</p></div>
+        <div class="criterion"><span>20%</span><h3>השפעה</h3><p>קהל מוגדר, תכנית הפצה, שותפים ופוטנציאל לתהודה.</p></div>
+        <div class="criterion"><span>20%</span><h3>צמצום פערים</h3><p>שפות, נגישות, פריפריה וזמינות התוצר לאחר הפעילות.</p></div>
+        <div class="criterion"><span>5%</span><h3>מעורבות החוקרים</h3><p>החוקרים בחזית הפעילות כמנחים, מדגימים או מרצים.</p></div>
+        <div class="criterion"><span>15%</span><h3>תכנית עבודה וישימות</h3><p>לוח זמנים, תקציב, משאבים ויכולת ביצוע בתוך שנה.</p></div>
+      </div>
+    </section>
+  </section>
+
+  <section id="submit" class="tab-panel" role="tabpanel">
+    <article class="card">
+      <h2 id="formHeading">הגשת רעיון</h2>
+      <p class="note">אפשר להתחיל מליבת הרעיון ולשמור טיוטה. רק שישה שדות נדרשים להגשה; היתר מסומנים כ״רצוי למלא בשלב זה״ ויעזרו לצוות לחדד ולהשוות.</p>
+
+      <form id="ideaForm">
+        <div class="progress-card" aria-live="polite">
+          <div class="progress-head"><strong>התקדמות בליבת הרעיון</strong><span id="progressText">0 מתוך 6 שדות חובה</span></div>
+          <progress id="formProgress" max="6" value="0">0 מתוך 6</progress>
+        </div>
+        <h3 class="section-title">פרטי הרעיון</h3>
+        <div class="field-grid">
+          <div class="field">
+            <label for="researcherName">שם החוקר/ת *</label>
+            <input id="researcherName" name="researcherName" required autocomplete="name">
+            <span class="hint">מי מציע/ה את הרעיון? לדוגמה: ד״ר יעל כהן.</span>
+          </div>
+          <div class="field">
+            <label for="ideaName">שם הרעיון *</label>
+            <input id="ideaName" name="ideaName" required maxlength="120">
+            <span class="hint">שם קצר שקל לזכור. לדוגמה: ״מי מלווה אותי?״</span>
+          </div>
+          <div class="field full">
+            <label for="publicAction">מה הציבור יעשה בפועל? *</label>
+            <textarea id="publicAction" name="publicAction" required></textarea>
+            <span class="hint">תארו פעולה, לא רק צפייה. לדוגמה: יאזין לשלוש הנחיות, יבחר כיצד להגיב וישווה את רמת המתח.</span>
+          </div>
+          <div class="field full">
+            <label for="researchFinding">על איזה ממצא מחקרי הרעיון מבוסס? *</label>
+            <textarea id="researchFinding" name="researchFinding" required></textarea>
+            <span class="hint">נסחו מסר מחקרי אחד בשפה פשוטה. לדוגמה: אופן ניסוח ההכוונה משפיע על תחושת המתח והתועלת.</span>
+          </div>
+        </div>
+
+        <h3 class="section-title">קהל וחוויית המשתמש</h3>
+        <div class="field-grid">
+          <div class="field">
+            <label for="targetAudience">קהל יעד *</label>
+            <select id="targetAudience" name="targetAudience" required>
+              <option value="">בחירה</option>
+              <option>נהגים צעירים</option><option>הורים</option><option>משפחות</option>
+              <option>נוער</option><option>מורים ומחנכים</option><option>קהל רחב</option>
+              <option>פריפריה</option><option>דוברי ערבית</option><option>גיל שלישי</option><option>אחר</option>
+            </select>
+            <span class="hint">מי הקהל העיקרי? לדוגמה: נהגים צעירים והוריהם.</span>
+          </div>
+          <div class="field">
+            <label for="activityFormat">פורמט הפעילות <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <select id="activityFormat" name="activityFormat">
+              <option value="">בחירה</option>
+              <option>סדנה</option><option>סרטון</option><option>סדרת רילז</option>
+              <option>עמדת התנסות</option><option>מוצג אינטראקטיבי</option><option>פודקאסט</option>
+              <option>הרצאה</option><option>ערכת לימוד</option><option>סיור</option><option>אירוע ציבורי</option><option>אחר</option>
+            </select>
+            <span class="hint">באיזו צורה הקהל יפגוש את הרעיון? לדוגמה: עמדת התנסות באירוע קהילתי.</span>
+          </div>
+          <div class="field full">
+            <label for="hook">מה יגרום לאדם לעצור ולהשתתף? *</label>
+            <textarea id="hook" name="hook" required></textarea>
+            <span class="hint">תארו את רגע המשיכה הראשוני. לדוגמה: בחירה בין קול של הורה, מלווה מרחוק ואווטאר וקבלת תוצאה מידית.</span>
+          </div>
+        </div>
+
+        <h3 class="section-title">הפצה, פערים והמשכיות</h3>
+        <div class="field-grid">
+          <div class="field full">
+            <label for="distribution">איך הציבור ייחשף לפעילות? <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="distribution" name="distribution"></textarea>
+            <span class="hint">ציינו ערוצים ומקומות. לדוגמה: בתי ספר, מרכזי צעירים ורשתות חברתיות של שותפים.</span>
+          </div>
+          <div class="field full">
+            <label for="gapReduction">כיצד הפעילות תגיע לאנשים שפחות נחשפים למדע? <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="gapReduction" name="gapReduction"></textarea>
+            <span class="hint">חשבו על מקום, שפה, עלות ונגישות. לדוגמה: פעילות חינמית בעברית ובערבית שתגיע למרכזי נוער בפריפריה.</span>
+          </div>
+          <div class="field">
+            <label for="languagesAccessibility">שפות ונגישות <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="languagesAccessibility" name="languagesAccessibility"></textarea>
+            <span class="hint">מה יאפשר ליותר אנשים להשתתף? לדוגמה: כתוביות, הקראה, עברית וערבית והתאמה לקוראי מסך.</span>
+          </div>
+          <div class="field">
+            <label for="partners">שותפים אפשריים <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="partners" name="partners"></textarea>
+            <span class="hint">מי יכול לסייע להגיע לקהל או להפעיל? לדוגמה: בתי ספר לנהיגה, מועצות מקומיות ועמותות בטיחות.</span>
           </div>
           <div class="field">
             <label for="reachEstimate">הערכת חשיפה <span class="optional-tag">רצוי למלא בשלב זה</span></label>
@@ -899,4 +992,3 @@
 </script>
 </body>
 </html>
-
