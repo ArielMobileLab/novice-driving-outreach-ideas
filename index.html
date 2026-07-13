@@ -747,9 +747,13 @@
       saveLocalIdeas(items);
       return;
     }
+    const submission = {...item};
+    ["activityFormat","distribution","gapReduction","complexity","resources","teamContribution"].forEach(key => {
+      if(!String(submission[key] || "").trim()) submission[key] = "רצוי למלא בשלב זה";
+    });
     const res = await fetch(url, {
       method:"POST",
-      body:JSON.stringify({action:"create", data:item})
+      body:JSON.stringify({action:"create", data:submission})
     });
     if(!res.ok) throw new Error("Submission failed");
     const payload = await res.json();
