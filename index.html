@@ -111,6 +111,14 @@
       font-weight:700;
     }
     .nav-spacer{flex:1}
+    .nav-meta{display:flex;gap:8px;align-items:center;white-space:nowrap}
+    .connection-status,.idea-counter{
+      display:inline-flex;align-items:center;gap:6px;
+      border:1px solid var(--line);background:#fff;padding:7px 10px;border-radius:999px;
+      color:var(--muted);font-size:.86rem;
+    }
+    .connection-status::before{content:"";width:8px;height:8px;border-radius:50%;background:#2e9b60}
+    .connection-status.offline::before{background:#c48a16}
     .small-button{
       border:1px solid var(--line);
       background:#fff;
@@ -136,6 +144,22 @@
       padding:22px;
     }
     .card h2,.card h3{margin-top:0}
+    .intro-grid,.topic-grid,.process-grid{display:grid;gap:14px}
+    .intro-grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:18px}
+    .topic-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .topic{
+      border:1px solid var(--line);border-radius:14px;padding:15px;background:#f9fcfd;
+    }
+    .topic strong{display:block;color:var(--brand);margin-bottom:3px}
+    .process-grid{grid-template-columns:repeat(4,minmax(0,1fr));counter-reset:stage}
+    .process-step{position:relative;padding:16px 52px 16px 14px;border:1px solid var(--line);border-radius:14px;background:#fff}
+    .process-step::before{counter-increment:stage;content:counter(stage);position:absolute;right:14px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-weight:700}
+    details.example{margin-top:18px}
+    details.example summary{cursor:pointer;font-weight:700;color:var(--brand);padding:4px}
+    details.example[open] summary{margin-bottom:14px}
+    .example-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .example-grid div{background:#f8fbfc;border-radius:10px;padding:11px}
+    .example-grid strong{display:block;margin-bottom:3px}
     .callout{
       background:linear-gradient(135deg,#f4fbff,#eff8f1);
       border-right:5px solid var(--brand-2);
@@ -171,6 +195,9 @@
       padding-bottom:8px;
       border-bottom:1px solid var(--line);
     }
+    .progress-card{position:sticky;top:67px;z-index:20;background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:16px 0;box-shadow:0 8px 22px rgba(18,58,79,.08)}
+    .progress-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:7px;font-size:.92rem}
+    progress{display:block;width:100%;height:10px;accent-color:var(--brand-2)}
     .field-grid{
       display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));
@@ -189,6 +216,7 @@
       font-weight:400;
       margin-top:3px;
     }
+    .optional-tag{display:inline-block;margin-right:6px;padding:2px 7px;border-radius:999px;background:var(--warn);color:#735c12;font-size:.78rem;font-weight:400}
     input,select,textarea{
       width:100%;
       border:1px solid #b8c8d2;
@@ -279,6 +307,9 @@
       background:#f8fbfc;
     }
     .idea-details strong{display:block;margin-bottom:2px}
+    .idea-actions{display:flex;justify-content:flex-end;margin-top:12px}
+    .new-idea-button{display:none}
+    .new-idea-button.show{display:inline-block}
     .empty{
       text-align:center;
       padding:38px 20px;
@@ -308,23 +339,6 @@
       color:var(--brand);
       text-align:center;
     }
-    dialog{
-      border:0;
-      border-radius:18px;
-      width:min(640px,calc(100% - 30px));
-      padding:0;
-      box-shadow:var(--shadow);
-    }
-    dialog::backdrop{background:rgba(12,34,48,.52)}
-    .dialog-body{padding:22px}
-    .dialog-head{
-      display:flex;justify-content:space-between;gap:10px;align-items:center;
-      margin-bottom:14px;
-    }
-    .dialog-head h3{margin:0}
-    .close-button{
-      border:0;background:#eef3f5;border-radius:8px;padding:7px 10px;
-    }
     .note{
       color:var(--muted);
       font-size:.92rem;
@@ -338,9 +352,25 @@
     }
     @media(max-width:900px){
       .grid-3,.criteria{grid-template-columns:1fr}
-      .grid-2,.field-grid,.idea-details{grid-template-columns:1fr}
+      .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid{grid-template-columns:1fr}
       .hero{grid-template-columns:1fr}
       .hero-badge{display:none}
+      .nav-inner{align-items:stretch}
+      .nav-spacer{display:none}
+      .nav-meta{margin-inline-start:auto}
+      .connection-status{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+      .progress-card{top:65px}
+    }
+    @media(max-width:620px){
+      header{padding:22px 16px 28px}
+      main{padding:22px 14px 55px}
+      .card{padding:17px}
+      .nav-inner{padding:8px 12px}
+      .tab-button{padding:9px 10px}
+      .idea-counter{display:none}
+      .connection-status{font-size:.78rem}
+      .actions>*{width:100%}
+      input,select,textarea{font-size:16px}
     }
   </style>
 </head>
@@ -365,7 +395,10 @@
     <button class="tab-button" role="tab" aria-selected="false" data-tab="ideas">רעיונות שנאספו</button>
     <button class="tab-button" role="tab" aria-selected="false" data-tab="score">דירוג צוות</button>
     <span class="nav-spacer"></span>
-    <button class="small-button" id="settingsButton" type="button">הגדרות שיתוף</button>
+    <div class="nav-meta" aria-label="מצב המערכת">
+      <span class="idea-counter">נאספו <strong id="ideaCount">0</strong> רעיונות</span>
+      <span class="connection-status" id="connectionStatus" title="מצב חיבור לקריאה בלבד">מחובר לשמירה המשותפת</span>
+    </div>
   </div>
 </nav>
 
@@ -392,135 +425,120 @@
       </article>
     </div>
 
-    <article class="card callout" style="margin-top:18px">
-      <h2>מה אנחנו מחפשים</h2>
-      <p>רעיון שבו הציבור אינו רק קורא על המחקר, אלא עושה משהו ממשי: מקשיב, בוחר, משווה, מתנסה או מגיב למצבי ליווי שונים. עדיפות לרעיון שממחיש את הפער בין הוראות תפעוליות לבין הכוונה מסדר גבוה, ואת ההבדלים בין ליווי קונבנציונלי, ליווי מרחוק ואווטאר.</p>
-    </article>
+    <div class="intro-grid">
+      <article class="card callout">
+        <h2>מהו הקול הקורא?</h2>
+        <p>״מדע בגובה העיניים״ מזמין חוקרים להפוך ידע מחקרי לפעילות ציבורית נגישה, יצירתית ומשתפת. המטרה אינה רק לספר על מחקר, אלא לאפשר לקהלים מגוונים להתנסות, לשאול, לבחור ולהבין כיצד המחקר נוגע בחיי היום־יום.</p>
+      </article>
+      <article class="card">
+        <h2>למה המחקר שלנו מתאים?</h2>
+        <p>ליווי נהגים צעירים הוא מצב מוכר כמעט לכל משפחה: הוא משלב בטיחות, למידה, תקשורת ומתח. ההשוואה בין הורה ברכב, ליווי מרחוק ואווטאר מאפשרת להמחיש באופן מוחשי כיצד סוג ההכוונה והתגובה משפיעים על הנהג הצעיר.</p>
+      </article>
+      <article class="card">
+        <h2>למה נועד האתר?</h2>
+        <p>זהו מרחב עבודה צוותי לאיסוף רעיונות, לקריאה ולחידוד שלהם ולדירוג שקוף לפי קריטריוני הקול הקורא. כל רעיון נשמר בגיליון המשותף וזמין לחברי הצוות.</p>
+      </article>
+      <article class="card">
+        <h2>מה נדרש מכל חבר/ת צוות?</h2>
+        <p>להציע לפחות רעיון אחד, לתאר מה הציבור יעשה ועל איזה ממצא הוא נשען, לקרוא רעיונות של אחרים ולהוסיף פרטים שיעזרו להעריך עניין, נגישות וישימות.</p>
+      </article>
+    </div>
+
+    <section class="card" style="margin-top:18px">
+      <h2>על מה אפשר לבסס רעיון?</h2>
+      <p class="note">אפשר לבחור ציר אחד או לשלב כמה צירים בפעילות אחת.</p>
+      <div class="topic-grid">
+        <div class="topic"><strong>תקשורת בין הורים לנהגים צעירים</strong>מה נאמר בזמן הנהיגה, איך הוא נאמר ואיך הנהג הצעיר מפרש אותו.</div>
+        <div class="topic"><strong>הוראות תפעוליות לעומת הכוונה מסדר גבוה</strong>הבדל בין ״בלום עכשיו״ לבין הכוונה לצפות סיכון ולקבל החלטה עצמאית.</div>
+        <div class="topic"><strong>תגובות חיוביות, שליליות או מלחיצות</strong>כיצד עידוד, ביקורת או לחץ משנים את החוויה והביצוע.</div>
+        <div class="topic"><strong>ליווי קונבנציונלי</strong>הורה או מלווה היושב ברכב לצד הנהג הצעיר.</div>
+        <div class="topic"><strong>ליווי מרחוק</strong>קבלת תמיכה והכוונה ממלווה שאינו נמצא ברכב.</div>
+        <div class="topic"><strong>ליווי באמצעות אווטאר</strong>מלווה דיגיטלי שמציע משוב או הכוונה בזמן תרחיש נהיגה.</div>
+        <div class="topic"><strong>תפיסת בטיחות, תועלת ומתח</strong>כיצד הנהגים והמלווים מעריכים את מידת הבטיחות, העזרה והעומס הרגשי.</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:18px">
+      <h2>איך התהליך עובד?</h2>
+      <div class="process-grid">
+        <div class="process-step"><strong>הצעת רעיון</strong><br>כל חבר/ת צוות ממלא/ת את ליבת הרעיון.</div>
+        <div class="process-step"><strong>קריאה וחידוד</strong><br>קוראים, עורכים ומשלימים פרטים יחד.</div>
+        <div class="process-step"><strong>דירוג צוותי</strong><br>מעריכים כל רעיון לפי ששת הקריטריונים.</div>
+        <div class="process-step"><strong>בחירה לפיתוח</strong><br>בוחרים רעיון מוביל ומגבשים תכנית, תקציב ושותפים.</div>
+      </div>
+      <p style="margin-bottom:0"><strong>לאחר האיסוף:</strong> הצוות יאחד רעיונות דומים, יחדד את החיבור לממצאי המחקר, ידרג את החלופות ויבחר רעיון אחד לפיתוח ולהגשה לקול הקורא.</p>
+    </section>
+
+    <details class="card example">
+      <summary>דוגמה מלאה לרעיון: ״מי מלווה אותי?״</summary>
+      <div class="example-grid">
+        <div><strong>מה הציבור יעשה?</strong>המשתתפים יצפו בשלושה תרחישי נהיגה קצרים, יבחרו תגובה בכל צומת וישוו כיצד הם מרגישים כשההכוונה מגיעה מהורה, מרחוק או מאווטאר.</div>
+        <div><strong>הממצא המחקרי</strong>סוג ההכוונה ואופן הניסוח עשויים להשפיע על תפיסת הבטיחות, התועלת והמתח של נהגים צעירים.</div>
+        <div><strong>קהל יעד</strong>נהגים צעירים והוריהם באירועי קהילה ובבתי ספר.</div>
+        <div><strong>מה יגרום לעצור?</strong>עמדת ״בחרו את המלווה שלכם״ עם שלושה קולות שונים ותוצאה מיידית על המסך.</div>
+        <div><strong>פורמט והפצה</strong>עמדת התנסות ניידת, סרטון קצר וערכת הפעלה מקוונת לבתי ספר.</div>
+        <div><strong>צמצום פערים ונגישות</strong>הפעלה בעברית ובערבית, כתוביות, פעילות ללא צורך ברישיון נהיגה והגעה ליישובים שבהם מתקיימות פחות פעילויות מדע.</div>
+        <div><strong>מורכבות ומשאבים</strong>בינונית: הפקת תרחישים חדשים, טאבלטים, אוזניות, מנחה ושותף קהילתי.</div>
+        <div><strong>מה יישאר לאחר הפרויקט?</strong>שלושת הסרטונים וערכת ההפעלה יישארו פתוחים לשימוש מורים, הורים וארגוני בטיחות.</div>
+      </div>
+    </details>
 
     <section class="card" style="margin-top:18px">
       <h2>קריטריוני הבחירה</h2>
       <div class="criteria">
-        <div class="criterion"><span>20%</span><h3>איכות ונגישות</h3><p>תרגום ממצאים לשפה ברורה, ידידותית ומותאמת לקהל.</p></div>
-        <div class="criterion"><span>20%</span><h3>חדשנות ויצירתיות</h3><p>אלמנט מקורי שמושך תשומת לב ומעורר סקרנות.</p></div>
-        <div class="criterion"><span>20%</span><h3>השפעה</h3><p>קהל מוגדר, תכנית הפצה, שותפים ופוטנציאל לתהודה.</p></div>
-        <div class="criterion"><span>20%</span><h3>צמצום פערים</h3><p>שפות, נגישות, פריפריה וזמינות התוצר לאחר הפעילות.</p></div>
-        <div class="criterion"><span>5%</span><h3>מעורבות החוקרים</h3><p>החוקרים בחזית הפעילות כמנחים, מדגימים או מרצים.</p></div>
-        <div class="criterion"><span>15%</span><h3>תכנית עבודה וישימות</h3><p>לוח זמנים, תקציב, משאבים ויכולת ביצוע בתוך שנה.</p></div>
-      </div>
-    </section>
-  </section>
-
-  <section id="submit" class="tab-panel" role="tabpanel">
-    <article class="card">
-      <h2>הגשת רעיון</h2>
-      <p class="note">שורה אחת בגיליון המקורי הפכה כאן לטופס מובנה. שדות החובה מסומנים בכוכבית.</p>
-
-      <form id="ideaForm">
-        <h3 class="section-title">פרטי הרעיון</h3>
-        <div class="field-grid">
-          <div class="field">
-            <label for="researcherName">שם החוקר/ת *</label>
-            <input id="researcherName" name="researcherName" required autocomplete="name">
+        <div class="criterion"><span>20%</span><h3>איכות ונגישות</h3><p>תרגום ממצאים לשפה…1825 tokens truncated…<span class="hint">מי יכול לסייע להגיע לקהל או להפעיל? לדוגמה: בתי ספר לנהיגה, מועצות מקומיות ועמותות בטיחות.</span>
           </div>
           <div class="field">
-            <label for="ideaName">שם הרעיון *</label>
-            <input id="ideaName" name="ideaName" required maxlength="120">
-          </div>
-          <div class="field full">
-            <label for="publicAction">מה הציבור יעשה בפועל *
-              <span class="hint">למשל: יאזין להנחיות, יבחר כיצד להגיב, ישווה בין סוגי ליווי או יתנסה בתרחיש.</span>
-            </label>
-            <textarea id="publicAction" name="publicAction" required></textarea>
-          </div>
-          <div class="field full">
-            <label for="researchFinding">הממצא המחקרי שעליו הרעיון מבוסס *</label>
-            <textarea id="researchFinding" name="researchFinding" required></textarea>
-          </div>
-        </div>
-
-        <h3 class="section-title">קהל וחוויית המשתמש</h3>
-        <div class="field-grid">
-          <div class="field">
-            <label for="targetAudience">קהל יעד *</label>
-            <select id="targetAudience" name="targetAudience" required>
-              <option value="">בחירה</option>
-              <option>נהגים צעירים</option><option>הורים</option><option>משפחות</option>
-              <option>נוער</option><option>מורים ומחנכים</option><option>קהל רחב</option>
-              <option>פריפריה</option><option>דוברי ערבית</option><option>גיל שלישי</option><option>אחר</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="activityFormat">פורמט הפעילות *</label>
-            <select id="activityFormat" name="activityFormat" required>
-              <option value="">בחירה</option>
-              <option>סדנה</option><option>סרטון</option><option>סדרת רילז</option>
-              <option>עמדת התנסות</option><option>מוצג אינטראקטיבי</option><option>פודקאסט</option>
-              <option>הרצאה</option><option>ערכת לימוד</option><option>סיור</option><option>אירוע ציבורי</option><option>אחר</option>
-            </select>
-          </div>
-          <div class="field full">
-            <label for="hook">האלמנט שיעורר עניין *</label>
-            <textarea id="hook" name="hook" required></textarea>
-          </div>
-        </div>
-
-        <h3 class="section-title">הפצה, פערים והמשכיות</h3>
-        <div class="field-grid">
-          <div class="field full">
-            <label for="distribution">דרך הפצה *</label>
-            <textarea id="distribution" name="distribution" required></textarea>
-          </div>
-          <div class="field full">
-            <label for="gapReduction">תרומה לצמצום פערים *</label>
-            <textarea id="gapReduction" name="gapReduction" required></textarea>
-          </div>
-          <div class="field">
-            <label for="languagesAccessibility">שפות ונגישות</label>
-            <textarea id="languagesAccessibility" name="languagesAccessibility"></textarea>
-          </div>
-          <div class="field">
-            <label for="partners">שותפים אפשריים</label>
-            <textarea id="partners" name="partners"></textarea>
-          </div>
-          <div class="field">
-            <label for="reachEstimate">הערכת חשיפה</label>
+            <label for="reachEstimate">הערכת חשיפה <span class="optional-tag">רצוי למלא בשלב זה</span></label>
             <input id="reachEstimate" name="reachEstimate" placeholder="למשל: 500 משתתפים ו־5,000 צפיות">
+            <span class="hint">הערכה ראשונית של היקף הקהל. לדוגמה: 300 משתתפים ישירים ו־3,000 צפיות.</span>
           </div>
           <div class="field">
-            <label for="continuity">המשכיות וזמינות</label>
+            <label for="continuity">מה יישאר זמין לציבור לאחר סיום הפרויקט? <span class="optional-tag">רצוי למלא בשלב זה</span></label>
             <textarea id="continuity" name="continuity"></textarea>
+            <span class="hint">ציינו תוצר שאפשר להמשיך להשתמש בו. לדוגמה: סרטונים וערכת הפעלה פתוחה למורים ולהורים.</span>
           </div>
         </div>
 
         <h3 class="section-title">ישימות ותרומת הצוות</h3>
         <div class="field-grid">
           <div class="field">
-            <label for="complexity">מורכבות *</label>
-            <select id="complexity" name="complexity" required>
-              <option value="">בחירה</option><option>נמוכה</option><option>בינונית</option><option>גבוהה</option>
+            <label for="complexity">רמת מורכבות <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <select id="complexity" name="complexity">
+              <option value="">בחירה</option>
+              <option>נמוכה — שימוש בתוכן או בתשתית קיימים</option>
+              <option>בינונית — הפקת תוכן או פעילות חדשה</option>
+              <option>גבוהה — פיתוח טכנולוגי, ציוד מיוחד או מספר שותפים</option>
             </select>
+            <span class="hint">בחרו לפי עיקר המאמץ. לדוגמה: צילום סדרת תרחישים חדשה הוא מורכבות בינונית.</span>
           </div>
           <div class="field">
-            <label for="budgetEstimate">אומדן תקציב</label>
+            <label for="budgetEstimate">אומדן תקציב <span class="optional-tag">רצוי למלא בשלב זה</span></label>
             <input id="budgetEstimate" name="budgetEstimate" type="number" min="0" max="100000" step="100" placeholder="₪">
+            <span class="hint">סדר גודל ראשוני בלבד, עד 30,000 ₪. לדוגמה: 12,000 ₪.</span>
           </div>
           <div class="field full">
-            <label for="resources">משאבים נדרשים *</label>
-            <textarea id="resources" name="resources" required></textarea>
+            <label for="resources">מה נצטרך כדי לבצע את הרעיון? <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="resources" name="resources"></textarea>
+            <span class="hint">אנשים, ציוד, תוכן וזמן. לדוגמה: חוקר/ת, מנחה, שלושה סרטונים, שני טאבלטים ואוזניות.</span>
           </div>
           <div class="field full">
-            <label for="teamContribution">תרומת חבר/ת הצוות *</label>
-            <textarea id="teamContribution" name="teamContribution" required></textarea>
+            <label for="teamContribution">כיצד חברי הצוות ישתתפו? <span class="optional-tag">רצוי למלא בשלב זה</span></label>
+            <textarea id="teamContribution" name="teamContribution"></textarea>
+            <span class="hint">תארו תפקידים אפשריים. לדוגמה: כתיבת תרחישים, הופעה בסרטון, הנחיית פעילות וניתוח משוב.</span>
           </div>
           <div class="field full">
-            <label for="notes">הערות</label>
+            <label for="notes">הערות <span class="optional-tag">רצוי למלא בשלב זה</span></label>
             <textarea id="notes" name="notes"></textarea>
+            <span class="hint">כל דבר שחשוב לזכור. לדוגמה: כדאי לבדוק אפשרות לשיתוף פעולה עם מרכזי צעירים.</span>
           </div>
         </div>
 
         <div class="actions">
-          <button class="primary" type="submit">שמירת הרעיון</button>
-          <button class="secondary" type="reset">ניקוי הטופס</button>
+          <button class="primary" id="submitIdeaButton" type="submit">הגשת הרעיון</button>
+          <button class="secondary" id="saveDraftButton" type="button">שמירה כטיוטה</button>
+          <button class="secondary" id="clearFormButton" type="button">ניקוי הטופס</button>
+          <button class="secondary new-idea-button" id="newIdeaButton" type="button">הגש רעיון נוסף</button>
         </div>
         <div id="formStatus" class="status" role="status" aria-live="polite"></div>
       </form>
@@ -534,8 +552,6 @@
         <button class="secondary" id="refreshIdeas" type="button">רענון</button>
         <button class="secondary" id="exportCsv" type="button">יצוא CSV</button>
         <button class="secondary" id="exportJson" type="button">גיבוי JSON</button>
-        <label class="secondary" for="importJson" style="cursor:pointer">ייבוא JSON</label>
-        <input id="importJson" type="file" accept=".json,application/json" hidden>
       </div>
       <div id="ideaList" class="idea-list"></div>
     </article>
@@ -561,23 +577,6 @@
   </section>
 </main>
 
-<dialog id="settingsDialog">
-  <div class="dialog-body">
-    <div class="dialog-head">
-      <h3>הגדרות שיתוף</h3>
-      <button class="close-button" id="closeSettings" type="button" aria-label="סגירה">סגור</button>
-    </div>
-    <p>האתר מחובר כברירת מחדל לגיליון המשותף של צוות המחקר. ניתן להזין כתובת שירות חלופית או לבחור במעבר מפורש לשמירה מקומית בדפדפן הנוכחי.</p>
-    <label for="apiUrl">כתובת Google Apps Script Web App</label>
-    <input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
-    <div class="actions">
-      <button class="primary" id="saveSettings" type="button">שמירה</button>
-      <button class="secondary" id="clearSettings" type="button">מעבר לשמירה מקומית</button>
-    </div>
-    <p class="note">האתר אינו כולל מנגנון התחברות. יש לשתף את הקישור רק עם צוות המחקר.</p>
-  </div>
-</dialog>
-
 <footer>
   כלי צוותי לאיסוף ובחירת רעיונות להנגשת מחקר על ליווי נהגים צעירים.
 </footer>
@@ -585,16 +584,17 @@
 <script>
   const FIELD_LABELS = {
     researcherName:"שם החוקר/ת", ideaName:"שם הרעיון", publicAction:"מה הציבור יעשה בפועל",
-    researchFinding:"הממצא המחקרי", targetAudience:"קהל יעד", hook:"האלמנט שיעורר עניין",
-    activityFormat:"פורמט הפעילות", distribution:"דרך הפצה", gapReduction:"תרומה לצמצום פערים",
-    complexity:"מורכבות", resources:"משאבים נדרשים", teamContribution:"תרומת חבר/ת הצוות",
+    researchFinding:"הממצא המחקרי", targetAudience:"קהל יעד", hook:"מה יגרום לאדם לעצור ולהשתתף?",
+    activityFormat:"פורמט הפעילות", distribution:"דרך הפצה", gapReduction:"כיצד הפעילות תגיע לאנשים שפחות נחשפים למדע?",
+    complexity:"מורכבות", resources:"מה נצטרך כדי לבצע את הרעיון?", teamContribution:"תרומת חבר/ת הצוות",
     languagesAccessibility:"שפות ונגישות", partners:"שותפים אפשריים", reachEstimate:"הערכת חשיפה",
-    continuity:"המשכיות וזמינות", budgetEstimate:"אומדן תקציב", notes:"הערות"
+    continuity:"מה יישאר זמין לציבור לאחר סיום הפרויקט?", budgetEstimate:"אומדן תקציב", notes:"הערות"
   };
 
   const STORAGE_KEY = "noviceDrivingOutreachIdeas";
   const SCORE_KEY = "noviceDrivingOutreachScores";
   const API_KEY = "noviceDrivingOutreachApiUrl";
+  const DRAFT_KEY = "noviceDrivingOutreachDraft";
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbx5-31SnEO5LCTFQVvlSx80LQMIPhlK6qIdc1TRABFNaFBO-wXsw1iYgC_qnU1E1JTD/exec";
 
   const $ = s => document.querySelector(s);
@@ -603,11 +603,24 @@
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[ch]));
 
-  function apiUrl(){ return localStorage.getItem(API_KEY) ?? DEFAULT_API_URL; }
+  function apiUrl(){ return localStorage.getItem(API_KEY) || DEFAULT_API_URL; }
   function localIdeas(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
   function saveLocalIdeas(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
   function scores(){ return JSON.parse(localStorage.getItem(SCORE_KEY) || "{}"); }
   function saveScores(data){ localStorage.setItem(SCORE_KEY, JSON.stringify(data)); }
+  let editingIdea = null;
+
+  function dedupeIdeas(items){
+    const latest = new Map();
+    items.forEach(item => { if(item?.id && !latest.has(item.id)) latest.set(item.id, item); });
+    return [...latest.values()];
+  }
+
+  function setConnection(connected){
+    const status = $("#connectionStatus");
+    status.textContent = connected ? "מחובר לשמירה המשותפת" : "אין חיבור — מוצגים נתונים מקומיים";
+    status.classList.toggle("offline", !connected);
+  }
 
   function setStatus(message, ok=true){
     const box = $("#formStatus");
@@ -622,10 +635,12 @@
       const res = await fetch(url + (url.includes("?") ? "&" : "?") + "action=list", {cache:"no-store"});
       if(!res.ok) throw new Error("Network error");
       const payload = await res.json();
-      return Array.isArray(payload.data) ? payload.data : [];
+      setConnection(true);
+      return dedupeIdeas(Array.isArray(payload.data) ? payload.data : []);
     }catch(err){
       console.error(err);
-      return localIdeas();
+      setConnection(false);
+      return dedupeIdeas(localIdeas());
     }
   }
 
@@ -633,7 +648,9 @@
     const url = apiUrl();
     if(!url){
       const items = localIdeas();
-      items.unshift(item);
+      const existingIndex = items.findIndex(existing => existing.id === item.id);
+      if(existingIndex >= 0) items[existingIndex] = item;
+      else items.unshift(item);
       saveLocalIdeas(items);
       return;
     }
@@ -648,8 +665,9 @@
 
   function formToObject(form){
     const data = Object.fromEntries(new FormData(form).entries());
-    data.id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-    data.createdAt = new Date().toISOString();
+    data.id = editingIdea?.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    data.createdAt = editingIdea?.createdAt || new Date().toISOString();
+    if(editingIdea) data.updatedAt = new Date().toISOString();
     return data;
   }
 
@@ -665,28 +683,75 @@
 
     try{
       await storeIdea(item);
+      const submittedName = item.ideaName;
+      const wasEditing = Boolean(editingIdea);
+      editingIdea = null;
       form.reset();
-      setStatus(apiUrl() ? "הרעיון נשמר בגיליון המשותף." : "הרעיון נשמר בדפדפן הנוכחי.");
+      localStorage.removeItem(DRAFT_KEY);
+      updateProgress();
+      $("#formHeading").textContent = "הגשת רעיון";
+      $("#submitIdeaButton").textContent = "הגשת הרעיון";
+      $("#newIdeaButton").classList.add("show");
+      setStatus(`${wasEditing ? "השינויים ברעיון" : "הרעיון"} „${submittedName}” נשמר${wasEditing ? "ו" : ""} בגיליון המשותף.`);
       await renderIdeas();
       await renderScores();
     }catch(err){
-      setStatus("שמירת הרעיון נכשלה. בדקו את כתובת שירות השיתוף או עברו לשמירה מקומית.", false);
+      setStatus("שמירת הרעיון נכשלה. בדקו את החיבור ונסו שוב.", false);
     }
+  });
+
+  function formValues(){ return Object.fromEntries(new FormData($("#ideaForm")).entries()); }
+
+  function fillForm(data){
+    Object.entries(data || {}).forEach(([key,value]) => {
+      const field = $("#ideaForm").elements.namedItem(key);
+      if(field && typeof value === "string") field.value = value;
+    });
+    updateProgress();
+  }
+
+  function updateProgress(){
+    const required = [...$("#ideaForm").querySelectorAll("[required]")];
+    const completed = required.filter(field => String(field.value).trim()).length;
+    $("#formProgress").value = completed;
+    $("#progressText").textContent = `${completed} מתוך ${required.length} שדות חובה`;
+  }
+
+  function clearForm(){
+    editingIdea = null;
+    $("#ideaForm").reset();
+    localStorage.removeItem(DRAFT_KEY);
+    $("#formHeading").textContent = "הגשת רעיון";
+    $("#submitIdeaButton").textContent = "הגשת הרעיון";
+    $("#newIdeaButton").classList.remove("show");
+    $("#formStatus").className = "status";
+    updateProgress();
+  }
+
+  $("#ideaForm").addEventListener("input", updateProgress);
+  $("#saveDraftButton").addEventListener("click", () => {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({values:formValues(), editingIdea}));
+    setStatus(`הטיוטה${formValues().ideaName ? ` „${formValues().ideaName}”` : ""} נשמרה בדפדפן הזה בלבד.`);
+  });
+  $("#clearFormButton").addEventListener("click", clearForm);
+  $("#newIdeaButton").addEventListener("click", () => {
+    clearForm();
+    $("#researcherName").focus();
   });
 
   function ideaCard(item){
     const fields = [
       ["מה הציבור יעשה", item.publicAction],
       ["הממצא המחקרי", item.researchFinding],
-      ["אלמנט העניין", item.hook],
+      ["מה יגרום לאדם לעצור ולהשתתף?", item.hook],
       ["דרך הפצה", item.distribution],
-      ["צמצום פערים", item.gapReduction],
-      ["משאבים", item.resources],
+      ["כיצד הפעילות תגיע לאנשים שפחות נחשפים למדע?", item.gapReduction],
+      ["מה נצטרך כדי לבצע את הרעיון?", item.resources],
       ["תרומת הצוות", item.teamContribution],
       ["שפות ונגישות", item.languagesAccessibility],
       ["שותפים", item.partners],
       ["הערכת חשיפה", item.reachEstimate],
-      ["המשכיות", item.continuity],
+      ["מה יישאר זמין לציבור לאחר סיום הפרויקט?", item.continuity],
       ["אומדן תקציב", item.budgetEstimate ? Number(item.budgetEstimate).toLocaleString("he-IL") + " ₪" : ""]
     ].filter(x => x[1]);
 
@@ -702,6 +767,7 @@
         <div class="idea-details">
           ${fields.map(([label,value]) => `<div><strong>${escapeHtml(label)}</strong>${escapeHtml(value)}</div>`).join("")}
         </div>
+        <div class="idea-actions"><button class="secondary" type="button" data-edit-id="${escapeHtml(item.id)}">עריכת הרעיון</button></div>
       </article>`;
   }
 
@@ -709,6 +775,7 @@
 
   async function renderIdeas(){
     cachedIdeas = await fetchIdeas();
+    $("#ideaCount").textContent = cachedIdeas.length;
     const query = ($("#ideaSearch").value || "").trim().toLowerCase();
     const filtered = cachedIdeas.filter(item =>
       [item.ideaName,item.researcherName,item.targetAudience,item.activityFormat,item.publicAction]
@@ -717,6 +784,20 @@
     $("#ideaList").innerHTML = filtered.length
       ? filtered.map(ideaCard).join("")
       : `<div class="empty">עדיין לא נשמרו רעיונות המתאימים לחיפוש.</div>`;
+    $$('[data-edit-id]').forEach(button => button.addEventListener("click", () => editIdea(button.dataset.editId)));
+  }
+
+  function editIdea(id){
+    const item = cachedIdeas.find(candidate => candidate.id === id);
+    if(!item) return;
+    editingIdea = item;
+    $("#ideaForm").reset();
+    fillForm(item);
+    $("#formHeading").textContent = `עריכת הרעיון: ${item.ideaName}`;
+    $("#submitIdeaButton").textContent = "שמירת השינויים";
+    $("#newIdeaButton").classList.remove("show");
+    $$('.tab-button').find(button => button.dataset.tab === "submit").click();
+    $("#formHeading").scrollIntoView({behavior:"smooth", block:"start"});
   }
 
   $("#ideaSearch").addEventListener("input", renderIdeas);
@@ -739,23 +820,6 @@
 
   $("#exportJson").addEventListener("click", async () => {
     download("רעיונות_ליווי_נהגים_צעירים.json", JSON.stringify(await fetchIdeas(), null, 2), "application/json");
-  });
-
-  $("#importJson").addEventListener("change", async event => {
-    const file = event.target.files[0];
-    if(!file) return;
-    try{
-      const items = JSON.parse(await file.text());
-      if(!Array.isArray(items)) throw new Error("Invalid");
-      saveLocalIdeas(items);
-      localStorage.setItem(API_KEY, "");
-      await renderIdeas();
-      await renderScores();
-      alert("הקובץ יובא ונשמר מקומית.");
-    }catch{
-      alert("קובץ JSON אינו תקין.");
-    }
-    event.target.value = "";
   });
 
   function download(filename, content, type){
@@ -817,26 +881,19 @@
     if(button.dataset.tab === "score") await renderScores();
   }));
 
-  const dialog = $("#settingsDialog");
-  $("#settingsButton").addEventListener("click", () => {
-    $("#apiUrl").value = apiUrl();
-    dialog.showModal();
-  });
-  $("#closeSettings").addEventListener("click", () => dialog.close());
-  $("#saveSettings").addEventListener("click", async () => {
-    const value = $("#apiUrl").value.trim();
-    if(value) localStorage.setItem(API_KEY, value);
-    else localStorage.removeItem(API_KEY);
-    dialog.close();
-    await renderIdeas(); await renderScores();
-  });
-  $("#clearSettings").addEventListener("click", async () => {
-    localStorage.setItem(API_KEY, "");
-    $("#apiUrl").value = "";
-    dialog.close();
-    await renderIdeas(); await renderScores();
-  });
-
+  try{
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+    if(draft?.values){
+      editingIdea = draft.editingIdea || null;
+      fillForm(draft.values);
+      if(editingIdea){
+        $("#formHeading").textContent = `עריכת הרעיון: ${editingIdea.ideaName}`;
+        $("#submitIdeaButton").textContent = "שמירת השינויים";
+      }
+      setStatus("הטיוטה האחרונה נטענה מהדפדפן הזה.");
+    }
+  }catch{ localStorage.removeItem(DRAFT_KEY); }
+  updateProgress();
   renderIdeas();
   renderScores();
 </script>
