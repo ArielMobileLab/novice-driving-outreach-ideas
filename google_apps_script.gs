@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.7 seconds
-Output:
 /**
  * Backend for the outreach-ideas website.
  *
