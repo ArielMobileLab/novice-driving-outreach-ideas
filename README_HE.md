@@ -1,6 +1,3 @@
-Exit code: 0
-Wall time: 0.7 seconds
-Output:
 # אתר איסוף רעיונות: ליווי נהגים צעירים
 
 ## מה כלול
