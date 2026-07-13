@@ -567,7 +567,7 @@
       <h3>הגדרות שיתוף</h3>
       <button class="close-button" id="closeSettings" type="button" aria-label="סגירה">סגור</button>
     </div>
-    <p>ללא כתובת שירות, הנתונים נשמרים רק בדפדפן הנוכחי. לשיתוף מרכזי בין חברי הצוות, פרסו את קובץ Google Apps Script המצורף והדביקו כאן את כתובת היישום.</p>
+    <p>האתר מחובר כברירת מחדל לגיליון המשותף של צוות המחקר. ניתן להזין כתובת שירות חלופית או לבחור במעבר מפורש לשמירה מקומית בדפדפן הנוכחי.</p>
     <label for="apiUrl">כתובת Google Apps Script Web App</label>
     <input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
     <div class="actions">
@@ -595,6 +595,7 @@
   const STORAGE_KEY = "noviceDrivingOutreachIdeas";
   const SCORE_KEY = "noviceDrivingOutreachScores";
   const API_KEY = "noviceDrivingOutreachApiUrl";
+  const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbx5-31SnEO5LCTFQVvlSx80LQMIPhlK6qIdc1TRABFNaFBO-wXsw1iYgC_qnU1E1JTD/exec";
 
   const $ = s => document.querySelector(s);
   const $$ = s => [...document.querySelectorAll(s)];
@@ -602,7 +603,7 @@
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[ch]));
 
-  function apiUrl(){ return localStorage.getItem(API_KEY) || ""; }
+  function apiUrl(){ return localStorage.getItem(API_KEY) ?? DEFAULT_API_URL; }
   function localIdeas(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
   function saveLocalIdeas(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
   function scores(){ return JSON.parse(localStorage.getItem(SCORE_KEY) || "{}"); }
@@ -747,7 +748,7 @@
       const items = JSON.parse(await file.text());
       if(!Array.isArray(items)) throw new Error("Invalid");
       saveLocalIdeas(items);
-      localStorage.removeItem(API_KEY);
+      localStorage.setItem(API_KEY, "");
       await renderIdeas();
       await renderScores();
       alert("הקובץ יובא ונשמר מקומית.");
@@ -830,7 +831,7 @@
     await renderIdeas(); await renderScores();
   });
   $("#clearSettings").addEventListener("click", async () => {
-    localStorage.removeItem(API_KEY);
+    localStorage.setItem(API_KEY, "");
     $("#apiUrl").value = "";
     dialog.close();
     await renderIdeas(); await renderScores();
