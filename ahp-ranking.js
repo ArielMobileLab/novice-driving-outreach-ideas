@@ -40,6 +40,9 @@ let ratingBackendAvailable = true;
 let activePairIndex = 0;
 let calculationScope = "team";
 let calculationCriterionKey = AHP_CRITERIA[0].key;
+let sharedSaveTimer = null;
+let sharedSaveInFlight = false;
+let sharedSaveQueued = false;
 const SLIDER_RATIOS = [9,7,5,3,1,1/3,1/5,1/7,1/9];
 
 function normalizedRaterName(value){
@@ -260,6 +263,60 @@ function setAhpStatus(message, ok=true){
   box.className = "status show " + (ok ? "ok" : "error");
 }
 
+function setRatingSaveState(message,state="idle"){
+  const box = $("#ratingSaveState");
+  if(!box) return;
+  box.textContent = message;
+  box.className = `rating-save-state show ${state}`;
+}
+
+async function persistSharedRating(){
+  if(!activeRating) return;
+  if(!ratingBackendAvailable){
+    setRatingSaveState("נשמר בדפדפן זה בלבד — החיבור לשמירה המשותפת אינו זמין.","error");
+    return;
+  }
+  if(sharedSaveInFlight){
+    sharedSaveQueued = true;
+    return;
+  }
+  sharedSaveInFlight = true;
+  sharedSaveQueued = false;
+  const snapshot = JSON.parse(JSON.stringify(activeRating));
+  setRatingSaveState("שומר את הבחירות בגיליון המשותף…","saving");
+  try{
+    await storeSharedRating(snapshot);
+    const savedAt = new Date().toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"});
+    setRatingSaveState(`נשמר לצוות בשעה ${savedAt} ✓`,"saved");
+    try{
+      sharedRatings = await fetchSharedRatings();
+      renderAhpResults();
+    }catch(err){
+      console.warn("Rating saved, but shared results refresh failed",err);
+    }
+  }catch(err){
+    console.error(err);
+    setRatingSaveState("השמירה המשותפת נכשלה. הבחירות נשמרו בינתיים בדפדפן זה.","error");
+  }finally{
+    sharedSaveInFlight = false;
+    if(sharedSaveQueued){
+      sharedSaveQueued = false;
+      setTimeout(persistSharedRating,0);
+    }
+  }
+}
+
+function scheduleSharedRatingSave(){
+  if(!activeRating) return;
+  clearTimeout(sharedSaveTimer);
+  if(!ratingBackendAvailable){
+    setRatingSaveState("נשמר בדפדפן זה בלבד — החיבור לשמירה המשותפת אינו זמין.","error");
+    return;
+  }
+  setRatingSaveState("השינוי נקלט — ממתין לשמירה אוטומטית…","pending");
+  sharedSaveTimer = setTimeout(persistSharedRating,700);
+}
+
 async function fetchSharedRatings(){
   const url = apiUrl();
   if(!url) throw new Error("No shared backend");
@@ -394,6 +451,7 @@ function setComparison(criterionKey,index,a,b){
   renderProgress();
   renderPairProgress();
   renderAhpResults();
+  scheduleSharedRatingSave();
 }
 
 function renderPairProgress(){
@@ -485,6 +543,7 @@ function setCriterionPreference(aKey,bKey,index){
   row?.classList.add("answered");
   if(value) value.textContent = importanceDescription(index,a,b);
   renderAhpResults();
+  scheduleSharedRatingSave();
 }
 
 function renderCriterionPreferenceProgress(){
@@ -962,6 +1021,7 @@ $("#ratingRationale").addEventListener("input", event => {
   if(!activeRating) return;
   activeRating.comparisons._rationale = event.target.value.slice(0,5000);
   saveActiveRatingLocally();
+  scheduleSharedRatingSave();
 });
 
 $("#startRating").addEventListener("click", () => {
@@ -994,26 +1054,8 @@ $("#startRating").addEventListener("click", () => {
   setAhpStatus(source && storedAssignment(source).length
     ? `הדירוג של ${name} נטען. אפשר להמשיך מהמקום שבו הופסק.`
     : `הוקצו ל-${name} שלושה רעיונות בדגימה המאוזנת: ${ideaNames}.`);
+  setRatingSaveState("שמירה אוטומטית פעילה — כל שינוי יישמר לצוות.","idle");
   renderAhpWorkspace();
-});
-
-$("#saveSharedRating").addEventListener("click", async () => {
-  if(!activeRating) return;
-  activeRating.comparisons._rationale = $("#ratingRationale").value.slice(0,5000);
-  if(!ratingBackendAvailable){
-    setAhpStatus("הדירוג נשמר בדפדפן זה, אך ממשק הדירוג המשותף עדיין לא הותקן ב-Google Apps Script.",false);
-    return;
-  }
-  try{
-    saveActiveRatingLocally();
-    await storeSharedRating(activeRating);
-    sharedRatings = await fetchSharedRatings();
-    setAhpStatus(`הדירוג של ${activeRating.raterName} נשמר לצוות. ניתן לחזור ולעדכן אותו בכל עת.`);
-    renderAhpResults();
-  }catch(err){
-    console.error(err);
-    setAhpStatus("שמירת הדירוג המשותף נכשלה. הדירוג נשמר בינתיים בדפדפן זה.",false);
-  }
 });
 
 async function renderScores(){
