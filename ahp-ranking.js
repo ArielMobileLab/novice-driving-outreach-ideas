@@ -194,10 +194,12 @@ async function fetchSharedRatings(){
     if(typeof comparisons === "string"){
       try{ comparisons = JSON.parse(comparisons || "{}"); }catch{ comparisons = {}; }
     }
+    const cleanComparisons = sanitizeComparisons(comparisons);
     return {
       raterName:String(row.raterName || ""),
       updatedAt:String(row.updatedAt || ""),
-      comparisons:sanitizeComparisons(comparisons)
+      rationale:cleanComparisons._rationale,
+      comparisons:cleanComparisons
     };
   }).filter(row => row.raterName);
 }
@@ -556,8 +558,9 @@ function renderCalculationDetails(){
   const criterion = AHP_CRITERIA.find(item => item.key === calculationCriterionKey) || AHP_CRITERIA[0];
   const result = priorityForCriterion(scope.record,criterion);
   const priorities = AHP_CRITERIA.map(item => priorityForCriterion(scope.record,item));
-  const rationaleHtml = scope.record.comparisons?._rationale
-    ? `<section class="rating-rationale-display"><strong>נימוקי המדרג/ת</strong><p>${escapeHtml(scope.record.comparisons._rationale)}</p></section>`
+  const scopeRationale = scope.record.rationale || scope.record.comparisons?._rationale || "";
+  const rationaleHtml = scopeRationale
+    ? `<section class="rating-rationale-display"><strong>נימוקי המדרג/ת</strong><p>${escapeHtml(scopeRationale)}</p></section>`
     : "";
   if(!result){
     content.innerHTML = `${rationaleHtml}<div class="calculation-empty">אין עדיין רשת השוואות מחוברת לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities,ideasForRecord(scope.record))}`;
@@ -606,7 +609,7 @@ function calculationAuditData(){
     generatedAt:new Date().toISOString(),
     scope:scope.label,
     officialWeights:Object.fromEntries(AHP_CRITERIA.map(criterion => [criterion.name,criterion.weight])),
-    rationale:scope.record.comparisons?._rationale || "",
+    rationale:scope.record.rationale || scope.record.comparisons?._rationale || "",
     ideas:scopeIdeas.map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
     criteria:AHP_CRITERIA.map((criterion,index) => ({
       key:criterion.key,name:criterion.name,officialWeight:criterion.weight,
