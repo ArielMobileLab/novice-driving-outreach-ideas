@@ -720,6 +720,7 @@ $("#startRating").addEventListener("click", () => {
 
 $("#saveSharedRating").addEventListener("click", async () => {
   if(!activeRating) return;
+  activeRating.comparisons._rationale = $("#ratingRationale").value.slice(0,5000);
   if(!ratingBackendAvailable){
     setAhpStatus("הדירוג נשמר בדפדפן זה, אך ממשק הדירוג המשותף עדיין לא הותקן ב-Google Apps Script.",false);
     return;
