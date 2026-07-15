@@ -392,6 +392,35 @@
     .consistency-list{font-size:.84rem;color:var(--muted);margin-top:12px}
     .consistency-warning{color:#9a5d00;font-weight:700}
     .shared-raters{font-size:.84rem;color:var(--muted)}
+    .calculation-details{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:#fff}
+    .calculation-details>summary{cursor:pointer;padding:16px;font-weight:800;color:var(--brand)}
+    .calculation-details[open]>summary{border-bottom:1px solid var(--line)}
+    .calculation-body{padding:16px}
+    .calculation-intro{margin:0 0 14px;color:var(--muted);line-height:1.6}
+    .calculation-controls{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr)) auto;gap:10px;align-items:end;margin-bottom:16px}
+    .calculation-controls label{font-weight:700}
+    .calculation-controls select{margin-top:5px}
+    .calculation-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+    .calculation-metric{border:1px solid var(--line);border-radius:12px;padding:12px;background:#f8fbfc}
+    .calculation-metric span{display:block;color:var(--muted);font-size:.78rem}
+    .calculation-metric strong{display:block;color:var(--brand);font-size:1.18rem;margin-top:3px}
+    .calculation-metric.warning{border-color:#d7a84d;background:#fff8e8}
+    .calculation-metric.good{border-color:#78ab94;background:#f2faf5}
+    .calculation-status{padding:11px 13px;border-radius:10px;margin:10px 0;font-weight:700}
+    .calculation-status.good{background:#e4f4ea;color:#236342}
+    .calculation-status.warning{background:#fff1cc;color:#805300}
+    .calculation-formula{direction:ltr;text-align:left;background:#f2f7fa;border-radius:10px;padding:10px 12px;font-family:Consolas,monospace;font-size:.86rem;overflow:auto}
+    .calculation-table-wrap{overflow:auto;margin-top:12px}
+    .calculation-table{min-width:680px;font-size:.84rem}
+    .calculation-table th,.calculation-table td{text-align:center;vertical-align:middle}
+    .calculation-table th:first-child,.calculation-table td:first-child{text-align:right;position:sticky;right:0;background:#fff;min-width:210px}
+    .calculation-table th:first-child{background:var(--soft)}
+    .idea-code{display:inline-block;direction:ltr;font-weight:800;color:var(--brand);margin-inline-end:5px}
+    .idea-key{display:grid;gap:4px;margin:10px 0;font-size:.82rem;color:var(--muted)}
+    .overall-calculation{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+    .overall-calculation h4,.criterion-calculation h4{margin:0 0 7px;color:var(--brand)}
+    .calculation-actions{display:flex;flex-wrap:wrap;gap:8px}
+    .calculation-empty{padding:18px;border:1px dashed #b8c8d2;border-radius:12px;color:var(--muted);text-align:center}
     .note{
       color:var(--muted);
       font-size:.92rem;
@@ -405,7 +434,7 @@
     }
     @media(max-width:900px){
       .grid-3,.criteria{grid-template-columns:1fr}
-      .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid,.criteria-guide-grid,.ahp-results{grid-template-columns:1fr}
+      .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid,.criteria-guide-grid,.ahp-results,.calculation-summary{grid-template-columns:1fr}
       .comparison-stage{grid-template-columns:1fr}
       .hero{grid-template-columns:1fr}
       .hero-badge{display:none}
@@ -426,6 +455,7 @@
       .actions>*{width:100%}
       input,select,textarea{font-size:16px}
       .ahp-rater{grid-template-columns:1fr}
+      .calculation-controls{grid-template-columns:1fr}
       .pair-head,.criterion-head{display:block}
       .pair-progress,.criterion-value{display:inline-block;margin-top:6px}
     }
@@ -755,6 +785,26 @@
           <p id="sharedRaters" class="shared-raters"></p>
         </section>
       </div>
+
+      <details class="calculation-details" id="calculationDetails">
+        <summary>פירוט חישובי AHP ויחס העקביות</summary>
+        <div class="calculation-body">
+          <p class="calculation-intro">כאן אפשר לראות כיצד ההשוואות הזוגיות הופכות למשקלים ולציון סופי. יחס עקביות (CR) עד 0.10 נחשב תקין; ערך גבוה יותר מצביע על השוואות שכדאי לבדוק שוב.</p>
+          <div class="calculation-controls">
+            <label for="calculationScope">דירוג לחישוב
+              <select id="calculationScope"></select>
+            </label>
+            <label for="calculationCriterion">קריטריון
+              <select id="calculationCriterion"></select>
+            </label>
+            <div class="calculation-actions">
+              <button class="secondary" id="exportAhpCsv" type="button">יצוא החישוב ל־CSV</button>
+              <button class="secondary" id="exportAhpJson" type="button">יצוא החישוב ל־JSON</button>
+            </div>
+          </div>
+          <div id="calculationContent"></div>
+        </div>
+      </details>
     </article>
   </section>
 </main>
@@ -1048,7 +1098,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=summary-500-between-20260715"></script>
+<script src="ahp-ranking.js?v=calculation-details-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>

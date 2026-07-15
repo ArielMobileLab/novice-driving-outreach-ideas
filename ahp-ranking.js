@@ -38,6 +38,8 @@ let activeRating = null;
 let sharedRatings = [];
 let ratingBackendAvailable = true;
 let activePairIndex = 0;
+let calculationScope = "team";
+let calculationCriterionKey = AHP_CRITERIA[0].key;
 const SLIDER_RATIOS = [9,7,5,3,1,1/3,1/5,1/7,1/9];
 
 function normalizedRaterName(value){
@@ -283,7 +285,7 @@ function priorityForCriterion(record,criterion){
   const ideas = rankableIdeas();
   const n = ideas.length;
   if(!n) return null;
-  if(n === 1) return {weights:[1], consistency:0};
+  if(n === 1) return {weights:[1], matrix:[[1]], geometric:[1], lambdaMax:1, ci:0, ri:0, consistency:0};
   const values = record?.comparisons?.[criterion.key] || {};
   const matrix = Array.from({length:n},() => Array(n).fill(1));
   for(let i=0;i<n;i++){
@@ -303,7 +305,7 @@ function priorityForCriterion(record,criterion){
   },0)/n;
   const ci = n > 2 ? Math.max(0,(lambdaMax-n)/(n-1)) : 0;
   const ri = [0,0,0,0.58,0.90,1.12,1.24,1.32,1.41,1.45,1.49][n] || 1.49;
-  return {weights, consistency:ri ? ci/ri : 0};
+  return {weights, matrix, geometric, lambdaMax, ci, ri, consistency:ri ? ci/ri : 0};
 }
 
 function overallRanking(priorities){
@@ -319,18 +321,143 @@ function rankingHtml(ranking){
   return `<ol class="ranking-list">${ranking.map((row,index) => `<li><span>${index+1}. ${escapeHtml(row.idea.ideaName || "ללא שם")}</span><strong>${row.score.toFixed(1)}%</strong></li>`).join("")}</ol>`;
 }
 
-function aggregateTeamPriorities(){
+function aggregateTeamRecord(){
   const pairs = ideaPairs();
-  return AHP_CRITERIA.map(criterion => {
+  const aggregate = emptyComparisons();
+  const completedRaters = {};
+  AHP_CRITERIA.forEach(criterion => {
     const completed = sharedRatings.filter(record => priorityForCriterion(record,criterion));
-    if(!completed.length) return null;
-    const aggregate = emptyComparisons();
+    completedRaters[criterion.key] = completed.length;
+    if(!completed.length) return;
     pairs.forEach(([a,b]) => {
       const ratios = completed.map(record => Number(record.comparisons[criterion.key][pairKey(a,b)]));
       aggregate[criterion.key][pairKey(a,b)] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
     });
-    return priorityForCriterion({comparisons:aggregate},criterion);
   });
+  return {raterName:"דירוג הצוות", comparisons:aggregate, completedRaters};
+}
+
+function aggregateTeamPriorities(){
+  const record = aggregateTeamRecord();
+  return AHP_CRITERIA.map(criterion => priorityForCriterion(record,criterion));
+}
+
+function calculationScopes(){
+  const options = [{value:"team",label:`דירוג הצוות (${sharedRatings.length} מדרגים שמורים)`,record:aggregateTeamRecord(),team:true}];
+  if(activeRating) options.push({value:"active",label:`הדירוג האישי הנוכחי — ${activeRating.raterName}`,record:activeRating});
+  sharedRatings.forEach((record,index) => options.push({value:`shared-${index}`,label:`מדרג/ת — ${record.raterName}`,record}));
+  return options;
+}
+
+function selectedCalculationScope(){
+  const options = calculationScopes();
+  return options.find(option => option.value === calculationScope) || options[0];
+}
+
+function fixed(value,digits=3){
+  return Number(value).toLocaleString("he-IL",{minimumFractionDigits:digits,maximumFractionDigits:digits});
+}
+
+function matrixValue(value){
+  if(Math.abs(value-1)<.000001) return "1";
+  return value >= 1 ? fixed(value,2) : fixed(value,3);
+}
+
+function ideaKeyHtml(ideas){
+  return `<div class="idea-key">${ideas.map((idea,index) => `<span><b class="idea-code">R${index+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</span>`).join("")}</div>`;
+}
+
+function overallCalculationHtml(priorities){
+  if(priorities.some(result => !result)){
+    return `<section class="overall-calculation"><h4>חישוב הציון הכולל</h4><div class="calculation-empty">הציון הכולל יוצג לאחר השלמת כל ההשוואות בכל ששת הקריטריונים.</div></section>`;
+  }
+  const ideas = rankableIdeas();
+  const rows = ideas.map((idea,ideaIndex) => {
+    const contributions = AHP_CRITERIA.map((criterion,cIndex) => priorities[cIndex].weights[ideaIndex]*criterion.weight);
+    const total = contributions.reduce((sum,value) => sum+value,0);
+    return `<tr><td><b class="idea-code">R${ideaIndex+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</td>${contributions.map(value => `<td>${fixed(value,2)}</td>`).join("")}<td><strong>${fixed(total,2)}%</strong></td></tr>`;
+  }).join("");
+  return `<section class="overall-calculation">
+    <h4>תרומת הקריטריונים לציון הכולל</h4>
+    <p class="note">כל תא הוא המשקל המקומי של הרעיון בקריטריון כפול משקל הקריטריון הרשמי. סכום השורה הוא הציון הכולל.</p>
+    <div class="calculation-formula">Total(i) = Σ [ local weight(i,c) × official criterion weight(c) ]</div>
+    <div class="calculation-table-wrap"><table class="calculation-table"><thead><tr><th>רעיון</th>${AHP_CRITERIA.map(c => `<th>${escapeHtml(c.short)}<br>${c.weight}%</th>`).join("")}<th>ציון כולל</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}
+
+function renderCalculationDetails(){
+  const scopeSelect = $("#calculationScope");
+  const criterionSelect = $("#calculationCriterion");
+  const content = $("#calculationContent");
+  if(!scopeSelect || !criterionSelect || !content) return;
+  const scopes = calculationScopes();
+  if(!scopes.some(option => option.value === calculationScope)) calculationScope = scopes[0].value;
+  scopeSelect.innerHTML = scopes.map(option => `<option value="${option.value}" ${option.value===calculationScope?"selected":""}>${escapeHtml(option.label)}</option>`).join("");
+  criterionSelect.innerHTML = AHP_CRITERIA.map(criterion => `<option value="${criterion.key}" ${criterion.key===calculationCriterionKey?"selected":""}>${escapeHtml(criterion.name)} — ${criterion.weight}%</option>`).join("");
+
+  const scope = selectedCalculationScope();
+  const criterion = AHP_CRITERIA.find(item => item.key === calculationCriterionKey) || AHP_CRITERIA[0];
+  const result = priorityForCriterion(scope.record,criterion);
+  const priorities = AHP_CRITERIA.map(item => priorityForCriterion(scope.record,item));
+  if(!result){
+    content.innerHTML = `<div class="calculation-empty">אין עדיין מספיק השוואות מלאות לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities)}`;
+    return;
+  }
+
+  const ideas = rankableIdeas();
+  const warning = result.consistency > .10;
+  const matrixHead = `<tr><th>רעיון</th>${ideas.map((idea,index) => `<th title="${escapeHtml(idea.ideaName || "ללא שם")}">R${index+1}</th>`).join("")}</tr>`;
+  const matrixRows = result.matrix.map((row,rowIndex) => `<tr><td><b class="idea-code">R${rowIndex+1}</b>${escapeHtml(ideas[rowIndex].ideaName || "ללא שם")}</td>${row.map(value => `<td>${matrixValue(value)}</td>`).join("")}</tr>`).join("");
+  const weightRows = ideas.map((idea,index) => `<tr><td><b class="idea-code">R${index+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</td><td>${fixed(result.geometric[index],4)}</td><td><strong>${fixed(result.weights[index]*100,2)}%</strong></td><td>${fixed(result.weights[index]*criterion.weight,2)} נק׳</td></tr>`).join("");
+  const teamNote = scope.team ? `<p class="note">מטריצת הצוות נבנתה באמצעות ממוצע גאומטרי של ההשוואות של ${scope.record.completedRaters[criterion.key] || 0} מדרגים שהשלימו קריטריון זה.</p>` : "";
+  content.innerHTML = `<section class="criterion-calculation">
+    <h4>${escapeHtml(criterion.name)} · משקל רשמי ${criterion.weight}%</h4>
+    ${teamNote}
+    <div class="calculation-summary">
+      <div class="calculation-metric"><span>λmax</span><strong>${fixed(result.lambdaMax,4)}</strong></div>
+      <div class="calculation-metric"><span>מדד עקביות CI</span><strong>${fixed(result.ci,4)}</strong></div>
+      <div class="calculation-metric"><span>מדד אקראי RI</span><strong>${fixed(result.ri,2)}</strong></div>
+      <div class="calculation-metric ${warning?"warning":"good"}"><span>יחס עקביות CR</span><strong>${fixed(result.consistency,3)}</strong></div>
+    </div>
+    <div class="calculation-status ${warning?"warning":"good"}">${warning?"CR גבוה מ־0.10 — מומלץ לעבור על השוואות סותרות בקריטריון זה.":"CR אינו גבוה מ־0.10 — רמת העקביות תקינה."}</div>
+    <div class="calculation-formula">GMᵢ = (Π aᵢⱼ)^(1/n) · wᵢ = GMᵢ / ΣGM · CI = (λmax − n)/(n − 1) · CR = CI / RI</div>
+    <h4 style="margin-top:18px">מטריצת ההשוואות ההדדית</h4>
+    <p class="note">ערך גדול מ־1 פירושו שרעיון השורה הועדף על רעיון העמודה; הערך ההפוך מופיע בצד השני של האלכסון.</p>
+    ${ideaKeyHtml(ideas)}
+    <div class="calculation-table-wrap"><table class="calculation-table"><thead>${matrixHead}</thead><tbody>${matrixRows}</tbody></table></div>
+    <h4 style="margin-top:18px">המשקלים המקומיים בקריטריון</h4>
+    <div class="calculation-table-wrap"><table class="calculation-table"><thead><tr><th>רעיון</th><th>ממוצע גאומטרי</th><th>משקל מקומי</th><th>תרומה לציון הכולל</th></tr></thead><tbody>${weightRows}</tbody></table></div>
+  </section>${overallCalculationHtml(priorities)}`;
+}
+
+function calculationAuditData(){
+  const scope = selectedCalculationScope();
+  const priorities = AHP_CRITERIA.map(criterion => priorityForCriterion(scope.record,criterion));
+  return {
+    generatedAt:new Date().toISOString(),
+    scope:scope.label,
+    officialWeights:Object.fromEntries(AHP_CRITERIA.map(criterion => [criterion.name,criterion.weight])),
+    ideas:rankableIdeas().map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
+    criteria:AHP_CRITERIA.map((criterion,index) => ({
+      key:criterion.key,name:criterion.name,officialWeight:criterion.weight,
+      ...(priorities[index] ? priorities[index] : {incomplete:true})
+    })),
+    comparisons:scope.record.comparisons
+  };
+}
+
+function exportCalculationCsv(){
+  const data = calculationAuditData();
+  const rows = [["דירוג",data.scope],["נוצר בתאריך",data.generatedAt],[],["קריטריון","משקל רשמי","רעיון","משקל מקומי","תרומה לציון הכולל","lambda max","CI","RI","CR"]];
+  data.criteria.forEach(criterion => {
+    if(criterion.incomplete){ rows.push([criterion.name,criterion.officialWeight,"לא הושלם"]); return; }
+    data.ideas.forEach((idea,index) => rows.push([criterion.name,criterion.officialWeight,idea.name,criterion.weights[index],criterion.weights[index]*criterion.officialWeight,criterion.lambdaMax,criterion.ci,criterion.ri,criterion.consistency]));
+  });
+  download("פירוט_חישובי_AHP.csv","\ufeff"+rows.map(row => row.map(csvEscape).join(",")).join("\n"),"text/csv;charset=utf-8");
+}
+
+function exportCalculationJson(){
+  download("פירוט_חישובי_AHP.json",JSON.stringify(calculationAuditData(),null,2),"application/json");
 }
 
 function renderAhpResults(){
@@ -349,6 +476,7 @@ function renderAhpResults(){
   $("#sharedRaters").textContent = sharedRatings.length
     ? `${sharedRatings.length} מדרגים שמרו נתונים: ${sharedRatings.map(r => r.raterName).join(", ")}`
     : "עדיין לא נשמרו דירוגים משותפים.";
+  renderCalculationDetails();
 }
 
 function renderAhpWorkspace(){
@@ -372,6 +500,16 @@ function movePair(direction){
 
 $("#previousPair").addEventListener("click", () => movePair(-1));
 $("#nextPair").addEventListener("click", () => movePair(1));
+$("#calculationScope").addEventListener("change", event => {
+  calculationScope = event.target.value;
+  renderCalculationDetails();
+});
+$("#calculationCriterion").addEventListener("change", event => {
+  calculationCriterionKey = event.target.value;
+  renderCalculationDetails();
+});
+$("#exportAhpCsv").addEventListener("click", exportCalculationCsv);
+$("#exportAhpJson").addEventListener("click", exportCalculationJson);
 
 $("#startRating").addEventListener("click", () => {
   const name = $("#raterName").value.trim();
