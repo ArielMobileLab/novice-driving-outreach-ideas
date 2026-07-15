@@ -397,7 +397,14 @@
     .ahp-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px}
     .rating-rationale-field{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:13px;background:#f8fbfc}
     .rating-rationale-field textarea{margin-top:6px}
-    .criteria-preference-card{margin-top:18px;border:2px solid #9ab7c8;border-radius:16px;padding:16px;background:#f2f7fa}
+    .ranking-stage{margin-top:20px;border-radius:18px;padding:18px}
+    .idea-ranking-stage{border:2px solid var(--brand);background:#fff}
+    .stage-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+    .stage-badge{display:inline-grid;place-items:center;min-width:72px;border-radius:999px;padding:6px 12px;background:var(--brand);color:#fff;font-size:.82rem;font-weight:800}
+    .stage-heading h3{margin:0;color:var(--brand)}
+    .stage-heading p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+    .criteria-preference-card{margin-top:26px;border:3px solid #7a5a9e;border-radius:18px;padding:18px;background:#f7f3fb;box-shadow:0 8px 24px rgba(76,48,105,.08)}
+    .criteria-preference-card .stage-badge{background:#68478d}
     .criteria-preference-title{display:flex;justify-content:space-between;gap:12px;align-items:center}
     .criteria-preference-title h3{margin:2px 0 0;color:var(--brand)}
     .criteria-preference-card progress{width:100%;margin:10px 0}
@@ -490,6 +497,8 @@
       .ahp-rater{grid-template-columns:1fr}
       .calculation-controls{grid-template-columns:1fr}
       .pair-head,.criterion-head{display:block}
+      .stage-heading{display:block}
+      .stage-badge{display:inline-grid;margin-bottom:9px}
       .criteria-preference-title{display:block}
       .criterion-weight-overview-head{display:block}
       .criterion-weight-overview-head .pill{display:inline-block;margin-top:8px}
@@ -780,7 +789,7 @@
       <h2>דירוג צוותי בהשוואה בין רעיונות</h2>
       <div class="ahp-intro">
         <strong>איך מדרגים?</strong>
-        בשלב הראשון משווים בין שלושה רעיונות שהוקצו בדגימה מאוזנת — 18 החלטות. בשלב השני משווים בין ששת הקריטריונים עצמם — 15 החלטות נוספות. האתר מציג במקביל דירוג רשמי לפי משקלי הקול הקורא ודירוג ניסויי לפי העדפות הצוות; המשקלים הרשמיים אינם משתנים.
+        בשלב א׳ משווים בין שלושה רעיונות שהוקצו בדגימה מאוזנת — 18 החלטות. בשלב ב׳ מקבלים 7 השוואות חכמות בין הקריטריונים, במקום להשוות את כל 15 הזוגות. כל הקצאה מחברת בין כל ששת הקריטריונים, ובמצטבר הצוות מכסה את הזוגות השונים. האתר מציג במקביל דירוג רשמי לפי משקלי הקול הקורא ודירוג ניסויי לפי העדפות הצוות; המשקלים הרשמיים אינם משתנים.
       </div>
 
       <details class="criteria-guide" open>
@@ -797,18 +806,25 @@
       <div id="ahpStatus" class="status" role="status" aria-live="polite"></div>
 
       <div id="ahpWorkspace" class="ahp-workspace">
-        <div class="progress-card">
-          <div class="progress-head"><strong>התקדמות בדירוג האישי</strong><span id="ahpProgressText">0 מתוך 0 השוואות</span></div>
-          <progress id="ahpProgress" max="1" value="0">0</progress>
-        </div>
-        <div id="pairCard" class="pair-card"></div>
-        <section class="criteria-preference-card">
-          <div class="criteria-preference-title">
-            <div><span class="meta">שלב ב׳</span><h3>מה חשוב יותר בבחירת רעיון לפיתוח?</h3></div>
-            <span id="criteriaWeightProgressText" class="pair-progress">0 מתוך 15 השוואות</span>
+        <section class="ranking-stage idea-ranking-stage" aria-labelledby="ideaRankingStageTitle">
+          <div class="stage-heading">
+            <span class="stage-badge">שלב א׳</span>
+            <div><h3 id="ideaRankingStageTitle">איזה רעיון עדיף בכל קריטריון?</h3><p>משווים בין שלושת הרעיונות שהוקצו לכם. בכל מסך מוצגים שני רעיונות זה מול זה.</p></div>
           </div>
-          <p class="note">השוו בין הקריטריונים לפי סדר העדיפויות שלכם, ללא התחשבות באחוזים שנקבעו בקול הקורא.</p>
-          <progress id="criteriaWeightProgress" max="15" value="0">0</progress>
+          <div class="progress-card">
+            <div class="progress-head"><strong>התקדמות בשלב א׳</strong><span id="ahpProgressText">0 מתוך 0 השוואות</span></div>
+            <progress id="ahpProgress" max="1" value="0">0</progress>
+          </div>
+          <div id="pairCard" class="pair-card"></div>
+        </section>
+        <section class="criteria-preference-card" aria-labelledby="criteriaPreferenceStageTitle">
+          <div class="criteria-preference-title stage-heading">
+            <span class="stage-badge">שלב ב׳</span>
+            <div><h3 id="criteriaPreferenceStageTitle">מה חשוב יותר בבחירת רעיון לפיתוח?</h3><p>זהו שלב נפרד: כאן משווים בין הקריטריונים עצמם, ולא בין הרעיונות.</p></div>
+            <span id="criteriaWeightProgressText" class="pair-progress">0 מתוך 7 השוואות</span>
+          </div>
+          <p class="note"><strong>רק 7 השוואות הוקצו לכם בדגימה חכמה.</strong> השוו לפי סדר העדיפויות שלכם, ללא התחשבות באחוזים שנקבעו בקול הקורא. שילוב הדירוגים של חברי הצוות מאפשר לכסות את כלל הזוגות.</p>
+          <progress id="criteriaWeightProgress" max="7" value="0">0</progress>
           <div id="criteriaPreferenceList" class="criteria-preference-list"></div>
           <div id="personalCriterionWeights" class="personal-criterion-weights note"></div>
         </section>
@@ -1166,7 +1182,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=weights-inside-ahp-details-20260715"></script>
+<script src="ahp-ranking.js?v=smart-seven-criteria-pairs-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>

@@ -131,10 +131,67 @@ function assignmentForRater(name){
 function pairKey(a,b){ return JSON.stringify([a.id,b.id]); }
 function criterionPairKey(a,b){ return JSON.stringify([a.key,b.key]); }
 function criterionPairs(){ return pairsForIdeas(AHP_CRITERIA); }
-function emptyComparisons(assignment=[]){
+
+const CRITERION_PAIR_BLOCKS = Array.from({length:AHP_CRITERIA.length},(_,root) => {
+  const n = AHP_CRITERIA.length;
+  const star = AHP_CRITERIA.map((_,index) => index).filter(index => index !== root).map(index => [Math.min(root,index),Math.max(root,index)]);
+  const extras = [
+    [Math.min((root+1)%n,(root+2)%n),Math.max((root+1)%n,(root+2)%n)],
+    [Math.min((root+3)%n,(root+4)%n),Math.max((root+3)%n,(root+4)%n)]
+  ];
+  return [...star,...extras];
+});
+
+function criterionBlockPairs(blockIndex){
+  return CRITERION_PAIR_BLOCKS[blockIndex].map(([a,b]) => [AHP_CRITERIA[a],AHP_CRITERIA[b]]);
+}
+
+function storedCriterionAssignment(record){
+  const validKeys = new Set(criterionPairs().map(([a,b]) => criterionPairKey(a,b)));
+  const keys = Array.isArray(record?.comparisons?._criteriaAssignment)
+    ? record.comparisons._criteriaAssignment.map(String).filter(key => validKeys.has(key))
+    : [];
+  return keys.length >= AHP_CRITERIA.length-1 ? [...new Set(keys)].slice(0,7) : [];
+}
+
+function criterionBlockUsage(){
+  return CRITERION_PAIR_BLOCKS.map((_,blockIndex) => {
+    const blockKeys = new Set(criterionBlockPairs(blockIndex).map(([a,b]) => criterionPairKey(a,b)));
+    return sharedRatings.filter(record => {
+      const assigned = storedCriterionAssignment(record);
+      return assigned.length === blockKeys.size && assigned.every(key => blockKeys.has(key));
+    }).length;
+  });
+}
+
+function criterionAssignmentForRater(name){
+  const knownBlock = EXERCISE_RATER_BLOCKS.get(normalizedRaterName(name));
+  const usage = criterionBlockUsage();
+  const blockIndex = Number.isInteger(knownBlock)
+    ? knownBlock % CRITERION_PAIR_BLOCKS.length
+    : usage.indexOf(Math.min(...usage));
+  return criterionBlockPairs(blockIndex).map(([a,b]) => criterionPairKey(a,b));
+}
+
+function criterionPairsForRecord(record=activeRating){
+  const allPairs = criterionPairs();
+  let assignment = storedCriterionAssignment(record);
+  if(!assignment.length && record?.raterName){
+    const knownBlock = EXERCISE_RATER_BLOCKS.get(normalizedRaterName(record.raterName));
+    const hash = Math.abs([...normalizedRaterName(record.raterName)].reduce((sum,ch) => sum+ch.charCodeAt(0),0));
+    const blockIndex = Number.isInteger(knownBlock) ? knownBlock % CRITERION_PAIR_BLOCKS.length : hash % CRITERION_PAIR_BLOCKS.length;
+    assignment = criterionBlockPairs(blockIndex).map(([a,b]) => criterionPairKey(a,b));
+  }
+  if(!assignment.length) return allPairs;
+  const selected = new Set(assignment);
+  return allPairs.filter(([a,b]) => selected.has(criterionPairKey(a,b)));
+}
+
+function emptyComparisons(assignment=[],criteriaAssignment=[]){
   return {
     ...Object.fromEntries(AHP_CRITERIA.map(c => [c.key,{}])),
     _assignment:assignment.map(String),
+    _criteriaAssignment:criteriaAssignment.map(String),
     _criteriaComparisons:{},
     _rationale:"",
     _method:"balanced-three-ideas-v1"
@@ -142,7 +199,10 @@ function emptyComparisons(assignment=[]){
 }
 
 function sanitizeComparisons(value){
-  const clean = emptyComparisons(Array.isArray(value?._assignment) ? value._assignment : []);
+  const clean = emptyComparisons(
+    Array.isArray(value?._assignment) ? value._assignment : [],
+    Array.isArray(value?._criteriaAssignment) ? value._criteriaAssignment : []
+  );
   clean._rationale = String(value?._rationale || "").slice(0,5000);
   clean._method = String(value?._method || "balanced-three-ideas-v1");
   if(value?._criteriaComparisons && typeof value._criteriaComparisons === "object"){
@@ -167,7 +227,7 @@ function comparisonsForAssignment(value,assignment){
   const source = sanitizeComparisons(value);
   const previous = storedAssignment({comparisons:source});
   const sameAssignment = previous.length === assignment.length && assignment.every(id => previous.includes(String(id)));
-  const clean = emptyComparisons(assignment);
+  const clean = emptyComparisons(assignment,source._criteriaAssignment);
   if(!sameAssignment) return clean;
   clean._rationale = source._rationale;
   clean._criteriaComparisons = {...source._criteriaComparisons};
@@ -430,15 +490,16 @@ function setCriterionPreference(aKey,bKey,index){
 function renderCriterionPreferenceProgress(){
   if(!activeRating) return;
   const values = activeRating.comparisons._criteriaComparisons || {};
-  const completed = criterionPairs().filter(([a,b]) => Number(values[criterionPairKey(a,b)]) > 0).length;
-  $("#criteriaWeightProgress").max = criterionPairs().length;
+  const assignedPairs = criterionPairsForRecord(activeRating);
+  const completed = assignedPairs.filter(([a,b]) => Number(values[criterionPairKey(a,b)]) > 0).length;
+  $("#criteriaWeightProgress").max = assignedPairs.length;
   $("#criteriaWeightProgress").value = completed;
-  $("#criteriaWeightProgressText").textContent = `${completed} מתוך ${criterionPairs().length} השוואות`;
+  $("#criteriaWeightProgressText").textContent = `${completed} מתוך ${assignedPairs.length} השוואות`;
 }
 
 function renderCriterionPreferences(){
   if(!activeRating) return;
-  $("#criteriaPreferenceList").innerHTML = criterionPairs().map(([a,b]) => criterionPreferenceRow(a,b)).join("");
+  $("#criteriaPreferenceList").innerHTML = criterionPairsForRecord(activeRating).map(([a,b]) => criterionPreferenceRow(a,b)).join("");
   renderCriterionPreferenceProgress();
   $$('[data-criteria-a][data-criteria-b]').forEach(slider => slider.addEventListener("input",event => {
     setCriterionPreference(event.target.dataset.criteriaA,event.target.dataset.criteriaB,Number(event.target.value));
@@ -655,7 +716,10 @@ function aggregateTeamRecord(){
       if(ratios.length) aggregate[criterion.key][key] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
     });
   });
-  const completedCriterionWeightRaters = sharedRatings.filter(record => criterionPairs().every(([a,b]) => Number(record.comparisons?._criteriaComparisons?.[criterionPairKey(a,b)]) > 0)).length;
+  const completedCriterionWeightRaters = sharedRatings.filter(record => {
+    const assignedPairs = criterionPairsForRecord(record);
+    return assignedPairs.length && assignedPairs.every(([a,b]) => Number(record.comparisons?._criteriaComparisons?.[criterionPairKey(a,b)]) > 0);
+  }).length;
   const criterionPairCounts = {};
   criterionPairs().forEach(([a,b]) => {
     const key = criterionPairKey(a,b);
@@ -919,6 +983,9 @@ $("#startRating").addEventListener("click", () => {
     updatedAt:new Date().toISOString(),
     comparisons:comparisonsForAssignment(source?.comparisons,assignment)
   };
+  if(!storedCriterionAssignment(activeRating).length){
+    activeRating.comparisons._criteriaAssignment = criterionAssignmentForRater(name);
+  }
   const pairs = ratingPairs();
   const missing = pairs.findIndex(([a,b]) => AHP_CRITERIA.some(c => !Number(activeRating.comparisons[c.key][pairKey(a,b)])));
   activePairIndex = missing >= 0 ? missing : 0;
