@@ -346,6 +346,17 @@
     .criterion-guide h3{font-size:1rem;margin:0 0 6px;display:flex;justify-content:space-between;gap:8px}
     .criterion-guide ul{font-size:.84rem;color:var(--muted);margin:0;padding-inline-start:19px}
     .ahp-intro{background:var(--soft);border-radius:14px;padding:15px;margin:16px 0}
+    .criterion-weight-overview{border:2px solid var(--brand);border-radius:16px;padding:16px;margin:16px 0;background:#fff}
+    .criterion-weight-overview-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .criterion-weight-overview-head h3{margin:2px 0 0;color:var(--brand);font-size:1.25rem}
+    .criterion-weight-overview-table{margin-top:12px}
+    .weight-overview-grid{display:grid;grid-template-columns:1.5fr repeat(3,minmax(90px,.7fr));border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .weight-overview-grid>*{padding:9px 10px;border-bottom:1px solid var(--line)}
+    .weight-overview-grid>*:not(:nth-child(4n+1)){text-align:center}
+    .weight-overview-grid>.overview-header{background:var(--soft);font-weight:800;color:var(--brand)}
+    .weight-overview-grid>.overview-last-row{border-bottom:0}
+    .weight-delta-positive{color:#236342;font-weight:800}
+    .weight-delta-negative{color:#8a4d00;font-weight:800}
     .ahp-rater{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;align-items:end;margin:16px 0}
     .ahp-rater label{font-weight:700}
     .ahp-rater input{margin-top:6px}
@@ -480,6 +491,10 @@
       .calculation-controls{grid-template-columns:1fr}
       .pair-head,.criterion-head{display:block}
       .criteria-preference-title{display:block}
+      .criterion-weight-overview-head{display:block}
+      .criterion-weight-overview-head .pill{display:inline-block;margin-top:8px}
+      .weight-overview-grid{grid-template-columns:1.25fr repeat(3,minmax(72px,.65fr));font-size:.78rem}
+      .weight-overview-grid>*{padding:8px 5px}
       .pair-progress,.criterion-value{display:inline-block;margin-top:6px}
     }
   </style>
@@ -767,6 +782,17 @@
         <strong>איך מדרגים?</strong>
         בשלב הראשון משווים בין שלושה רעיונות שהוקצו בדגימה מאוזנת — 18 החלטות. בשלב השני משווים בין ששת הקריטריונים עצמם — 15 החלטות נוספות. האתר מציג במקביל דירוג רשמי לפי משקלי הקול הקורא ודירוג ניסויי לפי העדפות הצוות; המשקלים הרשמיים אינם משתנים.
       </div>
+
+      <section class="criterion-weight-overview" aria-labelledby="criterionWeightOverviewTitle">
+        <div class="criterion-weight-overview-head">
+          <div><span class="meta">שני תרחישים במקביל</span><h3 id="criterionWeightOverviewTitle">משקלי הקריטריונים</h3></div>
+          <span id="criterionWeightOverviewStatus" class="pill">טוען את העדפות הצוות…</span>
+        </div>
+        <p class="note">העמודה הרשמית נשארת קבועה. העמודה השנייה מחושבת מהשוואות הקריטריונים של חברי הצוות.</p>
+        <div id="criterionWeightOverviewTable" class="criterion-weight-overview-table">
+          <div class="calculation-empty">טוען את משקלי הקריטריונים מהגיליון המשותף…</div>
+        </div>
+      </section>
 
       <details class="criteria-guide" open>
         <summary>משמעות הקריטריונים לפי הקול הקורא של משרד החדשנות, המדע והטכנולוגיה</summary>
@@ -1141,7 +1167,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=dual-weight-scenarios-20260715"></script>
+<script src="ahp-ranking.js?v=visible-criterion-weights-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>

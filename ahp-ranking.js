@@ -613,6 +613,30 @@ function criterionWeightChips(result,official=false){
   return `<div class="weight-chips">${AHP_CRITERIA.map((criterion,index) => `<span class="weight-chip">${escapeHtml(criterion.short)} <strong>${(weights[index]*100).toFixed(1)}%</strong></span>`).join("")}</div>`;
 }
 
+function renderCriterionWeightOverview(result,teamRecord){
+  const table = $("#criterionWeightOverviewTable");
+  const status = $("#criterionWeightOverviewStatus");
+  if(!table || !status) return;
+  if(!result){
+    status.textContent = "ממתין להשוואות צוות";
+    table.innerHTML = `<div class="calculation-empty">עדיין אין רשת השוואות מחוברת בין הקריטריונים. המשקלים הרשמיים נשארים בתוקף.</div>`;
+    return;
+  }
+  const cells = [
+    `<div class="overview-header">קריטריון</div><div class="overview-header">רשמי</div><div class="overview-header">העדפות הצוות</div><div class="overview-header">הפרש</div>`,
+    ...AHP_CRITERIA.map((criterion,index) => {
+      const generated = result.weights[index]*100;
+      const delta = generated-criterion.weight;
+      const last = index===AHP_CRITERIA.length-1 ? " overview-last-row" : "";
+      return `<div class="${last}">${escapeHtml(criterion.name)}</div><div class="${last}">${fixed(criterion.weight,1)}%</div><div class="${last}"><strong>${fixed(generated,1)}%</strong></div><div class="${delta>=0?"weight-delta-positive":"weight-delta-negative"}${last}">${delta>=0?"+":""}${fixed(delta,1)}</div>`;
+    })
+  ];
+  table.innerHTML = `<div class="weight-overview-grid">${cells.join("")}</div>`;
+  status.textContent = result.consistency == null
+    ? "משקל ניסויי · מטריצה חלקית"
+    : `CR ${fixed(result.consistency,3)} · ${teamRecord.completedCriterionWeightRaters} מדרגים`;
+}
+
 function aggregateTeamRecord(){
   const pairs = ideaPairs();
   const aggregate = emptyComparisons();
@@ -830,6 +854,7 @@ function renderAhpResults(){
   $("#preferenceWeightsSummary").innerHTML = preferenceWeights
     ? `${criterionWeightChips(preferenceWeights)}<div class="scenario-consistency">כיסוי: ${criterionCoverage} מתוך ${criterionPairs().length} זוגות · ${teamRecord.completedCriterionWeightRaters} מדרגים השלימו את כל ההשוואות · ${preferenceWeights.consistency == null ? `מטריצה חלקית; שגיאת LLSM ${fixed(preferenceWeights.residual,3)}` : `CR צוותי ${fixed(preferenceWeights.consistency,3)}${preferenceWeights.consistency>.10?" — מעל הסף":" — תקין"}`}</div>`
     : `<div class="note">כיסוי השוואות בין הקריטריונים: ${criterionCoverage} מתוך ${criterionPairs().length}.</div>`;
+  renderCriterionWeightOverview(preferenceWeights,teamRecord);
   $("#sharedRaters").textContent = sharedRatings.length
     ? `${sharedRatings.length} מדרגים שמרו נתונים: ${sharedRatings.map(r => r.raterName).join(", ")}`
     : "עדיין לא נשמרו דירוגים משותפים.";
