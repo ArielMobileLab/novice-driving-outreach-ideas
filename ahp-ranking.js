@@ -136,17 +136,25 @@ function completedForCriterion(record, criterion){
   return pairs.filter(([a,b]) => Number(values[pairKey(a,b)]) > 0).length;
 }
 
-function shortened(value,max=520){
-  const text = String(value || "").trim();
-  return text.length > max ? text.slice(0,max).trim() + "…" : text;
+function words(value){
+  return String(value || "").trim().split(/\s+/).filter(Boolean);
 }
 
-function summarySection(label,value,max=520){
-  const text = String(value || "").trim();
-  if(!text) return "";
-  const preview = shortened(text,max);
-  const full = text.length > max ? `<details><summary>הצגת הנוסח המלא</summary><p>${escapeHtml(text)}</p></details>` : "";
-  return `<section class="summary-section"><strong>${escapeHtml(label)}</strong><p>${escapeHtml(preview)}</p>${full}</section>`;
+function truncateWords(value,maxWords){
+  const list = words(value);
+  return {
+    text:list.slice(0,maxWords).join(" ") + (list.length > maxWords ? "…" : ""),
+    count:Math.min(list.length,maxWords)
+  };
+}
+
+function summarySection(label,value,maxWords){
+  const summary = truncateWords(value,maxWords);
+  if(!summary.count) return {html:"",count:0};
+  return {
+    html:`<section class="summary-section"><strong>${escapeHtml(label)}</strong><p>${escapeHtml(summary.text)}</p></section>`,
+    count:summary.count
+  };
 }
 
 function ideaSummary(item,label){
@@ -154,19 +162,21 @@ function ideaSummary(item,label){
   const access = [item.gapReduction,item.languagesAccessibility].filter(Boolean).join("\n");
   const format = [item.activityFormat ? `פורמט: ${item.activityFormat}` : "",item.distribution].filter(Boolean).join("\n");
   const continuity = [item.teamContribution,item.continuity ? `מה יישאר לציבור: ${item.continuity}` : ""].filter(Boolean).join("\n");
+  const sections = [
+    summarySection("מה הציבור יעשה בפועל?",item.publicAction,110),
+    summarySection("על איזה ממצא מחקרי הרעיון נשען?",item.researchFinding,100),
+    summarySection("קהל היעד",item.targetAudience,40),
+    summarySection("מה יגרום לאנשים לעצור ולהשתתף?",item.hook,60),
+    summarySection("פורמט והפצה",format,50),
+    summarySection("צמצום פערים ונגישות",access,55),
+    summarySection("מורכבות, משאבים ותקציב",execution,50),
+    summarySection("מעורבות החוקרים והמשכיות",continuity,35)
+  ];
+  const wordCount = sections.reduce((sum,section) => sum+section.count,0);
   return `<article class="pair-idea">
     <h4>${escapeHtml(label)}: ${escapeHtml(item.ideaName || "ללא שם")}</h4>
-    <p class="idea-researcher">הוצע על ידי: ${escapeHtml(item.researcherName || "לא צוין")}</p>
-    <div class="idea-summary">
-      ${summarySection("מה הציבור יעשה בפועל?",item.publicAction,700)}
-      ${summarySection("על איזה ממצא מחקרי הרעיון נשען?",item.researchFinding,700)}
-      ${summarySection("קהל היעד",item.targetAudience,350)}
-      ${summarySection("מה יגרום לאנשים לעצור ולהשתתף?",item.hook,500)}
-      ${summarySection("פורמט והפצה",format,500)}
-      ${summarySection("צמצום פערים ונגישות",access,550)}
-      ${summarySection("מורכבות, משאבים ותקציב",execution,550)}
-      ${summarySection("מעורבות החוקרים והמשכיות",continuity,550)}
-    </div>
+    <p class="idea-researcher">הוצע על ידי: ${escapeHtml(item.researcherName || "לא צוין")} · תקציר: ${wordCount} מילים</p>
+    <div class="idea-summary">${sections.map(section => section.html).join("")}</div>
   </article>`;
 }
 
@@ -239,15 +249,15 @@ function renderAllCriteriaPairCard(){
       <div><div class="meta">זוג רעיונות ${activePairIndex+1} מתוך ${pairs.length}</div><h3 class="pair-question">קראו את שני התקצירים והשוו בכל הקריטריונים</h3></div>
       <span class="pair-progress" id="currentPairProgress"></span>
     </div>
-    <div class="pair-ideas">
+    <div class="comparison-stage">
       ${ideaSummary(a,"רעיון א׳")}
-      <div class="pair-versus">מול</div>
+      <aside class="pair-comparisons">
+        <div class="comparison-identity"><span>רעיון א׳</span><b>מול</b><span>רעיון ב׳</span></div>
+        <h3>השוואה בכל הקריטריונים</h3>
+        <p class="note">הזיזו כל סמן לכיוון הרעיון העדיף. המרכז מסמן שוויון.</p>
+        <div class="criterion-comparison-list">${AHP_CRITERIA.map(c => criterionComparison(c,a,b)).join("")}</div>
+      </aside>
       ${ideaSummary(b,"רעיון ב׳")}
-    </div>
-    <div class="pair-comparisons">
-      <h3>דירוג השוואתי לפי כל הקריטריונים</h3>
-      <p class="note">הזיזו כל סמן לכיוון הרעיון העדיף. מרכז הסמן פירושו ששני הרעיונות שווים באותו קריטריון.</p>
-      <div class="criterion-comparison-list">${AHP_CRITERIA.map(c => criterionComparison(c,a,b)).join("")}</div>
     </div>`;
   renderPairProgress();
   $$('[data-criterion-slider]').forEach(slider => slider.addEventListener("input", event => {

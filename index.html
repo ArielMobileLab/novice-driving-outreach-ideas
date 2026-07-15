@@ -355,7 +355,7 @@
     .pair-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
     .pair-question{margin:0}
     .pair-progress{color:var(--muted);font-size:.88rem;white-space:nowrap}
-    .pair-ideas{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+    .comparison-stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,.82fr) minmax(0,1fr);gap:14px;align-items:start}
     .pair-idea{border:2px solid #c7d8e2;border-radius:14px;padding:14px;background:#f8fbfc}
     .pair-idea h4{margin:0 0 7px;color:var(--brand)}
     .idea-researcher{font-size:.82rem;color:var(--muted);margin:0 0 12px}
@@ -364,22 +364,22 @@
     .summary-section:first-child{border-top:0;padding-top:0}
     .summary-section strong{display:block;font-size:.84rem;color:var(--brand);margin-bottom:3px}
     .summary-section p{margin:0;white-space:pre-line;font-size:.9rem;line-height:1.55}
-    .summary-section details{margin-top:5px}
-    .summary-section summary{cursor:pointer;color:var(--brand);font-size:.82rem;font-weight:700}
-    .pair-versus{align-self:center;font-weight:800;color:var(--muted)}
-    .pair-comparisons{margin-top:18px;border-top:2px solid var(--line);padding-top:16px}
-    .pair-comparisons>h3{margin:0 0 4px}
+    .pair-comparisons{border:2px solid #9ab7c8;border-radius:14px;padding:13px;background:#f2f7fa}
+    .pair-comparisons>h3{margin:8px 0 4px;text-align:center;font-size:1.02rem}
+    .pair-comparisons>.note{text-align:center;font-size:.8rem;margin:0}
+    .comparison-identity{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;text-align:center;color:var(--brand);font-size:.8rem;font-weight:800}
+    .comparison-identity b{color:var(--muted)}
     .criterion-comparison-list{display:grid;gap:10px;margin-top:12px}
-    .criterion-comparison{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfd}
+    .criterion-comparison{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fbfcfd}
     .criterion-comparison.answered{border-color:#78ab94;background:#f5fbf7}
-    .criterion-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .criterion-head{display:block}
     .criterion-title{font-weight:800;color:var(--brand)}
     .criterion-hint{display:block;color:var(--muted);font-size:.78rem;margin-top:2px}
-    .criterion-value{font-size:.8rem;font-weight:700;color:#875800;background:#fff3cf;padding:4px 8px;border-radius:999px;white-space:nowrap}
+    .criterion-value{display:inline-block;font-size:.76rem;font-weight:700;color:#875800;background:#fff3cf;padding:3px 7px;border-radius:999px;margin-top:5px}
     .answered .criterion-value{color:#236342;background:#dff3e8}
-    .slider-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:9px}
+    .slider-row{display:grid;grid-template-columns:1fr;gap:6px;align-items:center;margin-top:7px}
     .criterion-slider{width:100%;accent-color:var(--brand);cursor:pointer}
-    .equal-button{padding:6px 10px;font-size:.78rem}
+    .equal-button{padding:5px 8px;font-size:.75rem;width:100%}
     .slider-labels{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;color:var(--muted);font-size:.75rem;margin-top:2px}
     .slider-labels span:nth-child(2){text-align:center}
     .slider-labels span:last-child{text-align:left}
@@ -406,6 +406,7 @@
     @media(max-width:900px){
       .grid-3,.criteria{grid-template-columns:1fr}
       .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid,.criteria-guide-grid,.ahp-results{grid-template-columns:1fr}
+      .comparison-stage{grid-template-columns:1fr}
       .hero{grid-template-columns:1fr}
       .hero-badge{display:none}
       .nav-inner{align-items:stretch}
@@ -425,12 +426,8 @@
       .actions>*{width:100%}
       input,select,textarea{font-size:16px}
       .ahp-rater{grid-template-columns:1fr}
-      .pair-ideas{grid-template-columns:1fr}
-      .pair-versus{text-align:center}
       .pair-head,.criterion-head{display:block}
       .pair-progress,.criterion-value{display:inline-block;margin-top:6px}
-      .slider-row{grid-template-columns:1fr}
-      .equal-button{width:100%}
     }
   </style>
 </head>
@@ -715,7 +712,7 @@
       <h2>דירוג צוותי בהשוואה בין רעיונות</h2>
       <div class="ahp-intro">
         <strong>איך מדרגים?</strong>
-        בכל פעם מוצגים שני רעיונות עם תקציר מפורט. מתחת לתקצירים מדרגים את אותו זוג בכל ששת הקריטריונים באמצעות סמנים. המערכת משתמשת בשיטת AHP כדי להפוך את ההשוואות לדירוג יחסי, תוך שמירה על משקלי משרד המדע.
+        בכל פעם מוצגים זה מול זה שני רעיונות, לכל אחד תקציר של עד 500 מילים. ביניהם מדרגים את אותו זוג בכל ששת הקריטריונים באמצעות סמנים. כדי לקבל דירוג AHP מלא יש להשלים את כל 10 זוגות הרעיונות — 60 החלטות קצרות בסך הכול. משקלי משרד המדע נשארים ללא שינוי.
       </div>
 
       <details class="criteria-guide" open>
@@ -1051,7 +1048,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=all-criteria-20260715"></script>
+<script src="ahp-ranking.js?v=summary-500-between-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>
