@@ -396,7 +396,7 @@
     <button class="tab-button" role="tab" aria-selected="false" data-tab="score">דירוג צוות</button>
     <span class="nav-spacer"></span>
     <div class="nav-meta" aria-label="מצב המערכת">
-      <span class="idea-counter">נאספו <strong id="ideaCount">0</strong> רעיונות</span>
+      <span class="idea-counter">נאספו <strong id="ideaCount" aria-live="polite" aria-busy="true">…</strong> רעיונות</span>
       <span class="connection-status" id="connectionStatus" title="מצב חיבור לקריאה בלבד">מחובר לשמירה המשותפת</span>
     </div>
   </div>
@@ -872,7 +872,9 @@
 
   async function renderIdeas(){
     cachedIdeas = await fetchIdeas();
-    $("#ideaCount").textContent = cachedIdeas.length;
+    const ideaCount = $("#ideaCount");
+    ideaCount.textContent = cachedIdeas.length;
+    ideaCount.setAttribute("aria-busy", "false");
     const query = ($("#ideaSearch").value || "").trim().toLowerCase();
     const filtered = cachedIdeas.filter(item =>
       [item.ideaName,item.researcherName,item.targetAudience,item.activityFormat,item.publicAction]
