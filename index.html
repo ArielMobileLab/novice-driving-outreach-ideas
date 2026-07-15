@@ -351,22 +351,38 @@
     .ahp-rater input{margin-top:6px}
     .ahp-workspace{display:none;margin-top:18px}
     .ahp-workspace.show{display:block}
-    .criterion-tabs{display:flex;gap:7px;overflow:auto;padding:4px 0 10px;margin-top:12px}
-    .criterion-tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 11px;border-radius:999px;cursor:pointer}
-    .criterion-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
-    .criterion-tab.complete::after{content:" ✓"}
     .pair-card{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff}
-    .pair-question{text-align:center;margin:4px 0 16px}
+    .pair-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+    .pair-question{margin:0}
+    .pair-progress{color:var(--muted);font-size:.88rem;white-space:nowrap}
     .pair-ideas{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
     .pair-idea{border:2px solid #c7d8e2;border-radius:14px;padding:14px;background:#f8fbfc}
     .pair-idea h4{margin:0 0 7px;color:var(--brand)}
+    .idea-researcher{font-size:.82rem;color:var(--muted);margin:0 0 12px}
+    .idea-summary{display:grid;gap:10px}
+    .summary-section{border-top:1px solid var(--line);padding-top:9px}
+    .summary-section:first-child{border-top:0;padding-top:0}
+    .summary-section strong{display:block;font-size:.84rem;color:var(--brand);margin-bottom:3px}
+    .summary-section p{margin:0;white-space:pre-line;font-size:.9rem;line-height:1.55}
+    .summary-section details{margin-top:5px}
+    .summary-section summary{cursor:pointer;color:var(--brand);font-size:.82rem;font-weight:700}
     .pair-versus{align-self:center;font-weight:800;color:var(--muted)}
-    .comparison-scale{display:grid;grid-template-columns:repeat(9,minmax(62px,1fr));gap:6px;margin:16px 0 8px}
-    .comparison-option{position:relative}
-    .comparison-option input{position:absolute;opacity:0;pointer-events:none}
-    .comparison-option label{display:flex;min-height:58px;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px;font-size:.8rem;cursor:pointer;background:#fff}
-    .comparison-option input:checked+label{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
-    .scale-legend{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:.8rem}
+    .pair-comparisons{margin-top:18px;border-top:2px solid var(--line);padding-top:16px}
+    .pair-comparisons>h3{margin:0 0 4px}
+    .criterion-comparison-list{display:grid;gap:10px;margin-top:12px}
+    .criterion-comparison{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfcfd}
+    .criterion-comparison.answered{border-color:#78ab94;background:#f5fbf7}
+    .criterion-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .criterion-title{font-weight:800;color:var(--brand)}
+    .criterion-hint{display:block;color:var(--muted);font-size:.78rem;margin-top:2px}
+    .criterion-value{font-size:.8rem;font-weight:700;color:#875800;background:#fff3cf;padding:4px 8px;border-radius:999px;white-space:nowrap}
+    .answered .criterion-value{color:#236342;background:#dff3e8}
+    .slider-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:9px}
+    .criterion-slider{width:100%;accent-color:var(--brand);cursor:pointer}
+    .equal-button{padding:6px 10px;font-size:.78rem}
+    .slider-labels{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;color:var(--muted);font-size:.75rem;margin-top:2px}
+    .slider-labels span:nth-child(2){text-align:center}
+    .slider-labels span:last-child{text-align:left}
     .ahp-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px}
     .ahp-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
     .result-panel{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
@@ -411,8 +427,10 @@
       .ahp-rater{grid-template-columns:1fr}
       .pair-ideas{grid-template-columns:1fr}
       .pair-versus{text-align:center}
-      .comparison-scale{grid-template-columns:repeat(3,1fr)}
-      .comparison-option label{min-height:48px}
+      .pair-head,.criterion-head{display:block}
+      .pair-progress,.criterion-value{display:inline-block;margin-top:6px}
+      .slider-row{grid-template-columns:1fr}
+      .equal-button{width:100%}
     }
   </style>
 </head>
@@ -697,7 +715,7 @@
       <h2>דירוג צוותי בהשוואה בין רעיונות</h2>
       <div class="ahp-intro">
         <strong>איך מדרגים?</strong>
-        בכל פעם מוצגים שני רעיונות וקריטריון אחד. בוחרים איזה רעיון עדיף באותו קריטריון ובאיזו מידה. המערכת משתמשת בשיטת AHP כדי להפוך את ההשוואות לדירוג יחסי, תוך שמירה על משקלי משרד המדע.
+        בכל פעם מוצגים שני רעיונות עם תקציר מפורט. מתחת לתקצירים מדרגים את אותו זוג בכל ששת הקריטריונים באמצעות סמנים. המערכת משתמשת בשיטת AHP כדי להפוך את ההשוואות לדירוג יחסי, תוך שמירה על משקלי משרד המדע.
       </div>
 
       <details class="criteria-guide" open>
@@ -718,12 +736,11 @@
           <div class="progress-head"><strong>התקדמות בדירוג האישי</strong><span id="ahpProgressText">0 מתוך 0 השוואות</span></div>
           <progress id="ahpProgress" max="1" value="0">0</progress>
         </div>
-        <div class="criterion-tabs" id="criterionTabs" aria-label="בחירת קריטריון"></div>
         <div id="pairCard" class="pair-card"></div>
         <div class="ahp-actions">
           <div>
-            <button class="secondary" id="previousPair" type="button">ההשוואה הקודמת</button>
-            <button class="secondary" id="nextPair" type="button">ההשוואה הבאה</button>
+            <button class="secondary" id="previousPair" type="button">זוג הרעיונות הקודם</button>
+            <button class="secondary" id="nextPair" type="button">זוג הרעיונות הבא</button>
           </div>
           <button class="primary" id="saveSharedRating" type="button">שמירת הדירוג לצוות</button>
         </div>

@@ -37,8 +37,8 @@ const AHP_CRITERIA = [
 let activeRating = null;
 let sharedRatings = [];
 let ratingBackendAvailable = true;
-let activeCriterionIndex = 0;
 let activePairIndex = 0;
+const SLIDER_RATIOS = [9,7,5,3,1,1/3,1/5,1/7,1/9];
 
 function normalizedRaterName(value){
   return String(value || "").trim().replace(/\s+/g," ").toLowerCase();
@@ -136,41 +136,97 @@ function completedForCriterion(record, criterion){
   return pairs.filter(([a,b]) => Number(values[pairKey(a,b)]) > 0).length;
 }
 
-function renderCriterionTabs(){
-  const totalPairs = ideaPairs().length;
-  $("#criterionTabs").innerHTML = AHP_CRITERIA.map((criterion,index) => {
-    const complete = totalPairs > 0 && completedForCriterion(activeRating,criterion) === totalPairs;
-    return `<button class="criterion-tab ${index===activeCriterionIndex?"active":""} ${complete?"complete":""}" type="button" data-criterion-index="${index}">${escapeHtml(criterion.short)} · ${criterion.weight}%</button>`;
-  }).join("");
-  $$('[data-criterion-index]').forEach(button => button.addEventListener("click", () => {
-    activeCriterionIndex = Number(button.dataset.criterionIndex);
-    const criterion = AHP_CRITERIA[activeCriterionIndex];
-    const pairs = ideaPairs();
-    const missing = pairs.findIndex(([a,b]) => !Number(activeRating.comparisons[criterion.key][pairKey(a,b)]));
-    activePairIndex = missing >= 0 ? missing : 0;
-    renderAhpWorkspace();
-  }));
+function shortened(value,max=520){
+  const text = String(value || "").trim();
+  return text.length > max ? text.slice(0,max).trim() + "…" : text;
 }
 
-function comparisonOptions(a,b,current){
-  const options = [
-    [9,"קיצוני",`${a.ideaName} עדיף באופן קיצוני`],
-    [7,"מאוד",`${a.ideaName} עדיף מאוד`],
-    [5,"בבירור",`${a.ideaName} עדיף בבירור`],
-    [3,"מעט",`${a.ideaName} עדיף מעט`],
-    [1,"שווים","שני הרעיונות שווים בקריטריון זה"],
-    [1/3,"מעט",`${b.ideaName} עדיף מעט`],
-    [1/5,"בבירור",`${b.ideaName} עדיף בבירור`],
-    [1/7,"מאוד",`${b.ideaName} עדיף מאוד`],
-    [1/9,"קיצוני",`${b.ideaName} עדיף באופן קיצוני`]
-  ];
-  return options.map(([ratio,label,aria],index) => `<div class="comparison-option">
-    <input type="radio" id="ahpChoice${index}" name="ahpChoice" value="${ratio}" ${Math.abs(Number(current)-ratio)<0.00001?"checked":""}>
-    <label for="ahpChoice${index}" title="${escapeHtml(aria)}" aria-label="${escapeHtml(aria)}">${escapeHtml(label)}</label>
-  </div>`).join("");
+function summarySection(label,value,max=520){
+  const text = String(value || "").trim();
+  if(!text) return "";
+  const preview = shortened(text,max);
+  const full = text.length > max ? `<details><summary>הצגת הנוסח המלא</summary><p>${escapeHtml(text)}</p></details>` : "";
+  return `<section class="summary-section"><strong>${escapeHtml(label)}</strong><p>${escapeHtml(preview)}</p>${full}</section>`;
 }
 
-function renderPairCard(){
+function ideaSummary(item,label){
+  const execution = [item.complexity,item.resources,item.budgetEstimate ? `תקציב משוער: ${item.budgetEstimate} ₪` : ""].filter(Boolean).join("\n");
+  const access = [item.gapReduction,item.languagesAccessibility].filter(Boolean).join("\n");
+  const format = [item.activityFormat ? `פורמט: ${item.activityFormat}` : "",item.distribution].filter(Boolean).join("\n");
+  const continuity = [item.teamContribution,item.continuity ? `מה יישאר לציבור: ${item.continuity}` : ""].filter(Boolean).join("\n");
+  return `<article class="pair-idea">
+    <h4>${escapeHtml(label)}: ${escapeHtml(item.ideaName || "ללא שם")}</h4>
+    <p class="idea-researcher">הוצע על ידי: ${escapeHtml(item.researcherName || "לא צוין")}</p>
+    <div class="idea-summary">
+      ${summarySection("מה הציבור יעשה בפועל?",item.publicAction,700)}
+      ${summarySection("על איזה ממצא מחקרי הרעיון נשען?",item.researchFinding,700)}
+      ${summarySection("קהל היעד",item.targetAudience,350)}
+      ${summarySection("מה יגרום לאנשים לעצור ולהשתתף?",item.hook,500)}
+      ${summarySection("פורמט והפצה",format,500)}
+      ${summarySection("צמצום פערים ונגישות",access,550)}
+      ${summarySection("מורכבות, משאבים ותקציב",execution,550)}
+      ${summarySection("מעורבות החוקרים והמשכיות",continuity,550)}
+    </div>
+  </article>`;
+}
+
+function sliderIndexForRatio(ratio){
+  const value = Number(ratio);
+  const index = SLIDER_RATIOS.findIndex(item => Math.abs(item-value)<0.00001);
+  return index >= 0 ? index : 4;
+}
+
+function comparisonDescription(index){
+  if(index === 4) return "שני הרעיונות שווים";
+  const strengths = ["עדיף באופן קיצוני","עדיף מאוד","עדיף בבירור","עדיף מעט"];
+  return index < 4 ? `רעיון א׳ ${strengths[index]}` : `רעיון ב׳ ${strengths[8-index]}`;
+}
+
+function criterionComparison(criterion,a,b){
+  const current = activeRating.comparisons[criterion.key][pairKey(a,b)];
+  const answered = Number(current) > 0;
+  const index = sliderIndexForRatio(current);
+  const hint = criterion.points.slice(0,2).join("; ");
+  return `<section class="criterion-comparison ${answered?"answered":""}" data-criterion-row="${criterion.key}">
+    <div class="criterion-head">
+      <div><span class="criterion-title">${escapeHtml(criterion.name)} · ${criterion.weight}%</span><span class="criterion-hint">${escapeHtml(hint)}</span></div>
+      <span class="criterion-value" data-criterion-value="${criterion.key}">${answered?escapeHtml(comparisonDescription(index)):"טרם דורג"}</span>
+    </div>
+    <div class="slider-row">
+      <input class="criterion-slider" dir="ltr" type="range" min="0" max="8" step="1" value="${index}" data-criterion-slider="${criterion.key}" aria-label="השוואה לפי ${escapeHtml(criterion.name)}" aria-valuetext="${answered?escapeHtml(comparisonDescription(index)):"טרם דורג"}">
+      <button class="secondary equal-button" type="button" data-equal-criterion="${criterion.key}">סמן כשווים</button>
+    </div>
+    <div class="slider-labels"><span>רעיון א׳ עדיף מאוד</span><span>שווים</span><span>רעיון ב׳ עדיף מאוד</span></div>
+  </section>`;
+}
+
+function setComparison(criterionKey,index,a,b){
+  const criterion = AHP_CRITERIA.find(item => item.key === criterionKey);
+  if(!criterion) return;
+  activeRating.comparisons[criterion.key][pairKey(a,b)] = SLIDER_RATIOS[index];
+  saveActiveRatingLocally();
+  const row = document.querySelector(`[data-criterion-row="${criterion.key}"]`);
+  const value = document.querySelector(`[data-criterion-value="${criterion.key}"]`);
+  const slider = document.querySelector(`[data-criterion-slider="${criterion.key}"]`);
+  const description = comparisonDescription(index);
+  row?.classList.add("answered");
+  if(value) value.textContent = description;
+  if(slider) slider.setAttribute("aria-valuetext",description);
+  renderProgress();
+  renderPairProgress();
+  renderAhpResults();
+}
+
+function renderPairProgress(){
+  const pairs = ideaPairs();
+  if(!pairs.length) return;
+  const [a,b] = pairs[activePairIndex];
+  const answered = AHP_CRITERIA.filter(c => Number(activeRating.comparisons[c.key][pairKey(a,b)]) > 0).length;
+  const element = $("#currentPairProgress");
+  if(element) element.textContent = `${answered} מתוך ${AHP_CRITERIA.length} קריטריונים הושלמו`;
+}
+
+function renderAllCriteriaPairCard(){
   const pairs = ideaPairs();
   if(!pairs.length){
     $("#pairCard").innerHTML = `<div class="empty">נדרשים לפחות שני רעיונות כדי לבצע השוואה זוגית.</div>`;
@@ -178,28 +234,30 @@ function renderPairCard(){
   }
   activePairIndex = Math.max(0,Math.min(activePairIndex,pairs.length-1));
   const [a,b] = pairs[activePairIndex];
-  const criterion = AHP_CRITERIA[activeCriterionIndex];
-  const current = activeRating.comparisons[criterion.key][pairKey(a,b)];
-  const excerpt = item => {
-    const text = String(item.publicAction || item.researchFinding || "");
-    return text.length > 220 ? text.slice(0,220) + "…" : text;
-  };
   $("#pairCard").innerHTML = `
-    <div class="meta">${escapeHtml(criterion.name)} · השוואה ${activePairIndex+1} מתוך ${pairs.length}</div>
-    <h3 class="pair-question">איזה רעיון עדיף לפי הקריטריון הזה?</h3>
-    <div class="pair-ideas">
-      <article class="pair-idea"><h4>רעיון א׳: ${escapeHtml(a.ideaName || "ללא שם")}</h4><p>${escapeHtml(excerpt(a))}</p></article>
-      <div class="pair-versus">מול</div>
-      <article class="pair-idea"><h4>רעיון ב׳: ${escapeHtml(b.ideaName || "ללא שם")}</h4><p>${escapeHtml(excerpt(b))}</p></article>
+    <div class="pair-head">
+      <div><div class="meta">זוג רעיונות ${activePairIndex+1} מתוך ${pairs.length}</div><h3 class="pair-question">קראו את שני התקצירים והשוו בכל הקריטריונים</h3></div>
+      <span class="pair-progress" id="currentPairProgress"></span>
     </div>
-    <div class="comparison-scale">${comparisonOptions(a,b,current)}</div>
-    <div class="scale-legend"><span>רעיון א׳ עדיף</span><span>שוויון</span><span>רעיון ב׳ עדיף</span></div>`;
-  $$('input[name="ahpChoice"]').forEach(input => input.addEventListener("change", event => {
-    activeRating.comparisons[criterion.key][pairKey(a,b)] = Number(event.target.value);
-    saveActiveRatingLocally();
-    renderProgress();
-    renderCriterionTabs();
-    renderAhpResults();
+    <div class="pair-ideas">
+      ${ideaSummary(a,"רעיון א׳")}
+      <div class="pair-versus">מול</div>
+      ${ideaSummary(b,"רעיון ב׳")}
+    </div>
+    <div class="pair-comparisons">
+      <h3>דירוג השוואתי לפי כל הקריטריונים</h3>
+      <p class="note">הזיזו כל סמן לכיוון הרעיון העדיף. מרכז הסמן פירושו ששני הרעיונות שווים באותו קריטריון.</p>
+      <div class="criterion-comparison-list">${AHP_CRITERIA.map(c => criterionComparison(c,a,b)).join("")}</div>
+    </div>`;
+  renderPairProgress();
+  $$('[data-criterion-slider]').forEach(slider => slider.addEventListener("input", event => {
+    setComparison(event.target.dataset.criterionSlider,Number(event.target.value),a,b);
+  }));
+  $$('[data-equal-criterion]').forEach(button => button.addEventListener("click", event => {
+    const key = event.currentTarget.dataset.equalCriterion;
+    const slider = document.querySelector(`[data-criterion-slider="${key}"]`);
+    if(slider) slider.value = "4";
+    setComparison(key,4,a,b);
   }));
 }
 
@@ -287,27 +345,19 @@ function renderAhpWorkspace(){
   if(!activeRating) return;
   $("#ahpWorkspace").classList.add("show");
   renderProgress();
-  renderCriterionTabs();
-  renderPairCard();
+  renderAllCriteriaPairCard();
   renderAhpResults();
   const pairs = ideaPairs();
-  $("#previousPair").disabled = !pairs.length || (activeCriterionIndex===0 && activePairIndex===0);
-  $("#nextPair").disabled = !pairs.length || (activeCriterionIndex===AHP_CRITERIA.length-1 && activePairIndex===pairs.length-1);
+  $("#previousPair").disabled = !pairs.length || activePairIndex===0;
+  $("#nextPair").disabled = !pairs.length || activePairIndex===pairs.length-1;
 }
 
 function movePair(direction){
   const pairs = ideaPairs();
   if(!pairs.length) return;
-  activePairIndex += direction;
-  if(activePairIndex >= pairs.length && activeCriterionIndex < AHP_CRITERIA.length-1){
-    activeCriterionIndex++;
-    activePairIndex=0;
-  }
-  if(activePairIndex < 0 && activeCriterionIndex > 0){
-    activeCriterionIndex--;
-    activePairIndex=pairs.length-1;
-  }
+  activePairIndex = Math.max(0,Math.min(activePairIndex+direction,pairs.length-1));
   renderAhpWorkspace();
+  $("#pairCard").scrollIntoView({behavior:"smooth",block:"start"});
 }
 
 $("#previousPair").addEventListener("click", () => movePair(-1));
@@ -331,9 +381,8 @@ $("#startRating").addEventListener("click", () => {
     updatedAt:new Date().toISOString(),
     comparisons:sanitizeComparisons(source?.comparisons)
   };
-  activeCriterionIndex = 0;
   const pairs = ideaPairs();
-  const missing = pairs.findIndex(([a,b]) => !Number(activeRating.comparisons[AHP_CRITERIA[0].key][pairKey(a,b)]));
+  const missing = pairs.findIndex(([a,b]) => AHP_CRITERIA.some(c => !Number(activeRating.comparisons[c.key][pairKey(a,b)])));
   activePairIndex = missing >= 0 ? missing : 0;
   saveActiveRatingLocally();
   setAhpStatus(source ? `הדירוג של ${name} נטען. אפשר להמשיך מהמקום שבו הופסק.` : `נפתח דירוג חדש עבור ${name}.`);
