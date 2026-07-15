@@ -185,7 +185,7 @@ function setAhpStatus(message, ok=true){
 async function fetchSharedRatings(){
   const url = apiUrl();
   if(!url) throw new Error("No shared backend");
-  const res = await fetch(url + (url.includes("?") ? "&" : "?") + "action=listRatings", {cache:"no-store"});
+  const res = await fetch(url + (url.includes("?") ? "&" : "?") + `action=listRatings&t=${Date.now()}`, {cache:"no-store"});
   if(!res.ok) throw new Error("Ratings network error");
   const payload = await res.json();
   if(payload.status !== "ok" || !Array.isArray(payload.data)) throw new Error(payload.message || "Ratings unavailable");
