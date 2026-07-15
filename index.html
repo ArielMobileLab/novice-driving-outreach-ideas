@@ -339,6 +339,43 @@
       color:var(--brand);
       text-align:center;
     }
+    .criteria-guide{margin:18px 0}
+    .criteria-guide summary{cursor:pointer;font-weight:700;color:var(--brand)}
+    .criteria-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    .criterion-guide{border:1px solid var(--line);border-radius:12px;padding:13px;background:#f8fbfc}
+    .criterion-guide h3{font-size:1rem;margin:0 0 6px;display:flex;justify-content:space-between;gap:8px}
+    .criterion-guide ul{font-size:.84rem;color:var(--muted);margin:0;padding-inline-start:19px}
+    .ahp-intro{background:var(--soft);border-radius:14px;padding:15px;margin:16px 0}
+    .ahp-rater{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:10px;align-items:end;margin:16px 0}
+    .ahp-rater label{font-weight:700}
+    .ahp-rater input{margin-top:6px}
+    .ahp-workspace{display:none;margin-top:18px}
+    .ahp-workspace.show{display:block}
+    .criterion-tabs{display:flex;gap:7px;overflow:auto;padding:4px 0 10px;margin-top:12px}
+    .criterion-tab{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 11px;border-radius:999px;cursor:pointer}
+    .criterion-tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .criterion-tab.complete::after{content:" ✓"}
+    .pair-card{border:1px solid var(--line);border-radius:16px;padding:18px;background:#fff}
+    .pair-question{text-align:center;margin:4px 0 16px}
+    .pair-ideas{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+    .pair-idea{border:2px solid #c7d8e2;border-radius:14px;padding:14px;background:#f8fbfc}
+    .pair-idea h4{margin:0 0 7px;color:var(--brand)}
+    .pair-versus{align-self:center;font-weight:800;color:var(--muted)}
+    .comparison-scale{display:grid;grid-template-columns:repeat(9,minmax(62px,1fr));gap:6px;margin:16px 0 8px}
+    .comparison-option{position:relative}
+    .comparison-option input{position:absolute;opacity:0;pointer-events:none}
+    .comparison-option label{display:flex;min-height:58px;align-items:center;justify-content:center;text-align:center;border:1px solid var(--line);border-radius:10px;padding:6px;font-size:.8rem;cursor:pointer;background:#fff}
+    .comparison-option input:checked+label{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+    .scale-legend{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:.8rem}
+    .ahp-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px}
+    .ahp-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
+    .result-panel{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+    .result-panel h3{margin-top:0}
+    .ranking-list{margin:0;padding:0;list-style:none}
+    .ranking-list li{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+    .consistency-list{font-size:.84rem;color:var(--muted);margin-top:12px}
+    .consistency-warning{color:#9a5d00;font-weight:700}
+    .shared-raters{font-size:.84rem;color:var(--muted)}
     .note{
       color:var(--muted);
       font-size:.92rem;
@@ -352,7 +389,7 @@
     }
     @media(max-width:900px){
       .grid-3,.criteria{grid-template-columns:1fr}
-      .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid{grid-template-columns:1fr}
+      .grid-2,.field-grid,.idea-details,.intro-grid,.topic-grid,.process-grid,.example-grid,.criteria-guide-grid,.ahp-results{grid-template-columns:1fr}
       .hero{grid-template-columns:1fr}
       .hero-badge{display:none}
       .nav-inner{align-items:stretch}
@@ -371,6 +408,11 @@
       .connection-status{font-size:.78rem}
       .actions>*{width:100%}
       input,select,textarea{font-size:16px}
+      .ahp-rater{grid-template-columns:1fr}
+      .pair-ideas{grid-template-columns:1fr}
+      .pair-versus{text-align:center}
+      .comparison-scale{grid-template-columns:repeat(3,1fr)}
+      .comparison-option label{min-height:48px}
     }
   </style>
 </head>
@@ -652,19 +694,52 @@
 
   <section id="score" class="tab-panel" role="tabpanel">
     <article class="card">
-      <h2>דירוג צוות</h2>
-      <p class="note">הציון בכל קריטריון הוא 1–5. הציון המשוקלל מחושב מתוך 100 ונשמר בדפדפן.</p>
-      <div class="score-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>רעיון</th><th>איכות ונגישות<br>20%</th><th>חדשנות<br>20%</th>
-              <th>השפעה<br>20%</th><th>צמצום פערים<br>20%</th>
-              <th>מעורבות<br>5%</th><th>ישימות<br>15%</th><th>ציון</th>
-            </tr>
-          </thead>
-          <tbody id="scoreBody"></tbody>
-        </table>
+      <h2>דירוג צוותי בהשוואה בין רעיונות</h2>
+      <div class="ahp-intro">
+        <strong>איך מדרגים?</strong>
+        בכל פעם מוצגים שני רעיונות וקריטריון אחד. בוחרים איזה רעיון עדיף באותו קריטריון ובאיזו מידה. המערכת משתמשת בשיטת AHP כדי להפוך את ההשוואות לדירוג יחסי, תוך שמירה על משקלי משרד המדע.
+      </div>
+
+      <details class="criteria-guide" open>
+        <summary>משמעות הקריטריונים לפי הקול הקורא של משרד החדשנות, המדע והטכנולוגיה</summary>
+        <div class="criteria-guide-grid" id="criteriaGuide"></div>
+      </details>
+
+      <div class="ahp-rater">
+        <label for="raterName">שם חבר/ת צוות המחקר
+          <input id="raterName" autocomplete="name" placeholder="למשל: ד״ר ישראל ישראלי">
+        </label>
+        <button class="primary" id="startRating" type="button">התחלת הדירוג או המשך דירוג קיים</button>
+      </div>
+      <div id="ahpStatus" class="status" role="status" aria-live="polite"></div>
+
+      <div id="ahpWorkspace" class="ahp-workspace">
+        <div class="progress-card">
+          <div class="progress-head"><strong>התקדמות בדירוג האישי</strong><span id="ahpProgressText">0 מתוך 0 השוואות</span></div>
+          <progress id="ahpProgress" max="1" value="0">0</progress>
+        </div>
+        <div class="criterion-tabs" id="criterionTabs" aria-label="בחירת קריטריון"></div>
+        <div id="pairCard" class="pair-card"></div>
+        <div class="ahp-actions">
+          <div>
+            <button class="secondary" id="previousPair" type="button">ההשוואה הקודמת</button>
+            <button class="secondary" id="nextPair" type="button">ההשוואה הבאה</button>
+          </div>
+          <button class="primary" id="saveSharedRating" type="button">שמירת הדירוג לצוות</button>
+        </div>
+      </div>
+
+      <div class="ahp-results">
+        <section class="result-panel">
+          <h3>הדירוג האישי שלי</h3>
+          <div id="personalRanking" class="note">הדירוג יוצג לאחר השלמת ההשוואות.</div>
+          <div id="consistencyReport" class="consistency-list"></div>
+        </section>
+        <section class="result-panel">
+          <h3>דירוג הצוות</h3>
+          <div id="teamRanking" class="note">עדיין אין דירוגים משותפים מלאים.</div>
+          <p id="sharedRaters" class="shared-raters"></p>
+        </section>
       </div>
     </article>
   </section>
@@ -685,7 +760,8 @@
   };
 
   const STORAGE_KEY = "noviceDrivingOutreachIdeas";
-  const SCORE_KEY = "noviceDrivingOutreachScores";
+  const AHP_KEY = "noviceDrivingOutreachAhpRatings";
+  const RATER_KEY = "noviceDrivingOutreachRaterName";
   const API_KEY = "noviceDrivingOutreachApiUrl";
   const DRAFT_KEY = "noviceDrivingOutreachDraft";
   const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbx5-31SnEO5LCTFQVvlSx80LQMIPhlK6qIdc1TRABFNaFBO-wXsw1iYgC_qnU1E1JTD/exec";
@@ -699,8 +775,8 @@
   function apiUrl(){ return localStorage.getItem(API_KEY) || DEFAULT_API_URL; }
   function localIdeas(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
   function saveLocalIdeas(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
-  function scores(){ return JSON.parse(localStorage.getItem(SCORE_KEY) || "{}"); }
-  function saveScores(data){ localStorage.setItem(SCORE_KEY, JSON.stringify(data)); }
+  function localAhpRatings(){ return JSON.parse(localStorage.getItem(AHP_KEY) || "{}"); }
+  function saveLocalAhpRatings(data){ localStorage.setItem(AHP_KEY, JSON.stringify(data)); }
   let editingIdea = null;
 
   function dedupeIdeas(items){
@@ -934,43 +1010,6 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  const WEIGHTS = [20,20,20,20,5,15];
-
-  function scoreSelect(id, index, value){
-    return `<select data-score-id="${escapeHtml(id)}" data-score-index="${index}" aria-label="ציון">
-      <option value="">–</option>
-      ${[1,2,3,4,5].map(n => `<option value="${n}" ${String(value)===String(n)?"selected":""}>${n}</option>`).join("")}
-    </select>`;
-  }
-
-  async function renderScores(){
-    const items = await fetchIdeas();
-    const allScores = scores();
-    $("#scoreBody").innerHTML = items.length ? items.map(item => {
-      const row = allScores[item.id] || ["","","","","",""];
-      const filled = row.every(v => Number(v) >= 1);
-      const total = filled ? row.reduce((sum,v,i)=>sum + Number(v)*WEIGHTS[i]/5,0) : "";
-      return `<tr>
-        <td><strong>${escapeHtml(item.ideaName || "ללא שם")}</strong><br><span class="meta">${escapeHtml(item.researcherName || "")}</span></td>
-        ${row.map((v,i)=>`<td class="score-cell">${scoreSelect(item.id,i,v)}</td>`).join("")}
-        <td class="score-total" data-total-id="${escapeHtml(item.id)}">${total===""?"–":total.toFixed(1)}</td>
-      </tr>`;
-    }).join("") : `<tr><td colspan="8">אין רעיונות לדירוג.</td></tr>`;
-
-    $$("[data-score-id]").forEach(el => el.addEventListener("change", e => {
-      const id = e.target.dataset.scoreId;
-      const index = Number(e.target.dataset.scoreIndex);
-      const data = scores();
-      data[id] = data[id] || ["","","","","",""];
-      data[id][index] = e.target.value;
-      saveScores(data);
-      const row = data[id];
-      const filled = row.every(v => Number(v) >= 1);
-      const total = filled ? row.reduce((sum,v,i)=>sum + Number(v)*WEIGHTS[i]/5,0) : "";
-      document.querySelector(`[data-total-id="${CSS.escape(id)}"]`).textContent = total==="" ? "–" : total.toFixed(1);
-    }));
-  }
-
   $$(".tab-button").forEach(button => button.addEventListener("click", async () => {
     $$(".tab-button").forEach(b => b.setAttribute("aria-selected","false"));
     $$(".tab-panel").forEach(p => p.classList.remove("active"));
@@ -994,8 +1033,8 @@
   }catch{ localStorage.removeItem(DRAFT_KEY); }
   updateProgress();
   renderIdeas();
-  renderScores();
 </script>
+<script src="ahp-ranking.js"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>
