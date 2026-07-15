@@ -312,7 +312,7 @@ function criterionComparison(criterion,a,b){
       <span class="criterion-value" data-criterion-value="${criterion.key}">${answered?escapeHtml(comparisonDescription(index)):"טרם דורג"}</span>
     </div>
     <div class="slider-row">
-      <input class="criterion-slider" dir="ltr" type="range" min="0" max="8" step="1" value="${index}" data-criterion-slider="${criterion.key}" aria-label="השוואה לפי ${escapeHtml(criterion.name)}" aria-valuetext="${answered?escapeHtml(comparisonDescription(index)):"טרם דורג"}">
+      <input class="criterion-slider" dir="rtl" type="range" min="0" max="8" step="1" value="${index}" data-criterion-slider="${criterion.key}" aria-label="השוואה לפי ${escapeHtml(criterion.name)}" aria-valuetext="${answered?escapeHtml(comparisonDescription(index)):"טרם דורג"}">
       <button class="secondary equal-button" type="button" data-equal-criterion="${criterion.key}">סמן כשווים</button>
     </div>
     <div class="slider-labels"><span>רעיון א׳ עדיף מאוד</span><span>שווים</span><span>רעיון ב׳ עדיף מאוד</span></div>
@@ -406,7 +406,7 @@ function criterionPreferenceRow(a,b){
       <div><strong>${escapeHtml(b.short)}</strong><span>${escapeHtml(b.points[0])}</span></div>
     </div>
     <span class="criterion-value" data-criteria-pair-value='${escapeHtml(key)}'>${answered?escapeHtml(importanceDescription(index,a,b)):"טרם דורג"}</span>
-    <input class="criterion-slider criteria-weight-slider" dir="ltr" type="range" min="0" max="8" step="1" value="${index}" data-criteria-a="${a.key}" data-criteria-b="${b.key}" aria-label="חשיבות ${escapeHtml(a.short)} מול ${escapeHtml(b.short)}">
+    <input class="criterion-slider criteria-weight-slider" dir="rtl" type="range" min="0" max="8" step="1" value="${index}" data-criteria-a="${a.key}" data-criteria-b="${b.key}" aria-label="חשיבות ${escapeHtml(a.short)} מול ${escapeHtml(b.short)}">
     <div class="slider-labels"><span>${escapeHtml(a.short)} חשוב יותר</span><span>שווים</span><span>${escapeHtml(b.short)} חשוב יותר</span></div>
   </section>`;
 }
