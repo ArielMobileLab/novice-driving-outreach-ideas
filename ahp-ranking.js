@@ -76,6 +76,14 @@ const EXERCISE_RATER_BLOCKS = new Map([
   ["נהג צעיר",4]
 ]);
 
+const EXERCISE_RATIONALES = new Map([
+  ["חוקר","הדגשתי נאמנות לממצאים, הצגת מגבלות, מעורבות ישירה של החוקרים ותוצר מדעי בר־קיימא. מבין שלושת הרעיונות שהוקצו לי, מעבדת ההחלטות חזקה במיוחד באיכות, בנגישות ובצמצום פערים; תיק 01:00 חזק בחדשנות ובהשפעה מקצועית אך פונה לקהל מצומצם יותר; ״מה יש לומר״ ישים ונאמן למחקר אך פחות חדשני."],
+  ["נציג משרד התחבורה","הדגשתי השפעה על התנהגות ומדיניות, אפשרות להרחבה ארצית, שותפים מוסדיים וישימות בתקציב ובלוח הזמנים. בשלישייה שהוקצתה לי, ״אותה נסיעה, שני סיפורים״ מתאים להסברה ציבורית רחבה; ״המושב הריק״ ממחיש היטב את הסיכון אך דורש הפעלה פיזית; ״מה יש לומר״ מעשי וזול ולכן עדיף בישימות ובצמצום פערים."],
+  ["נציג עמותת אור ירוק","הדגשתי הגעה למספר רב של משפחות, מסר בטיחותי ברור, נגישות ללא ציוד מיוחד והפצה ברשתות ובבתי ספר. בשלישייה שלי, ״אותה נסיעה, שני סיפורים״ הוא החדשני ביותר ובעל תפוצה גבוהה; מעבדת ההחלטות מוסיפה אינטראקטיביות; ״מה יש לומר״ הוא הפשוט והישים ביותר להפצה מיידית."],
+  ["הורה","הדגשתי שימושיות מיידית למשפחה, אמון ובטיחות, שפה פשוטה והיכולת להבין את נקודת המבט של הנהג הצעיר. בשלישייה שלי, מעבדת ההחלטות היא הישירה והנגישה ביותר למשפחה; ״המושב הריק״ יוצר אמפתיה אך מורכב יותר להפעלה; תיק 01:00 חשוב למדיניות אך מרוחק מחיי היום־יום של ההורה."],
+  ["נהג צעיר","הדגשתי עצמאות, ייצוג הוגן לקול הנהג הצעיר, חוויה שאינה מטיפה והתאמה לטלפון. בשלישייה שלי, ״אותה נסיעה, שני סיפורים״ מוביל משום שהוא נותן מקום שווה לשני הצדדים ונגיש בנייד; ״המושב הריק״ מסקרן וממחיש מתח ושליטה; תיק 01:00 מקצועי ורגולטורי ולכן פחות רלוונטי לצעירים."]
+]);
+
 function storedAssignment(record){
   const validIds = new Set(rankableIdeas().map(idea => String(idea.id)));
   const ids = Array.isArray(record?.comparisons?._assignment)
@@ -558,7 +566,7 @@ function renderCalculationDetails(){
   const criterion = AHP_CRITERIA.find(item => item.key === calculationCriterionKey) || AHP_CRITERIA[0];
   const result = priorityForCriterion(scope.record,criterion);
   const priorities = AHP_CRITERIA.map(item => priorityForCriterion(scope.record,item));
-  const scopeRationale = scope.record.rationale || scope.record.comparisons?._rationale || "";
+  const scopeRationale = scope.record.rationale || scope.record.comparisons?._rationale || EXERCISE_RATIONALES.get(normalizedRaterName(scope.record.raterName)) || "";
   const rationaleHtml = scopeRationale
     ? `<section class="rating-rationale-display"><strong>נימוקי המדרג/ת</strong><p>${escapeHtml(scopeRationale)}</p></section>`
     : "";
@@ -609,7 +617,7 @@ function calculationAuditData(){
     generatedAt:new Date().toISOString(),
     scope:scope.label,
     officialWeights:Object.fromEntries(AHP_CRITERIA.map(criterion => [criterion.name,criterion.weight])),
-    rationale:scope.record.rationale || scope.record.comparisons?._rationale || "",
+    rationale:scope.record.rationale || scope.record.comparisons?._rationale || EXERCISE_RATIONALES.get(normalizedRaterName(scope.record.raterName)) || "",
     ideas:scopeIdeas.map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
     criteria:AHP_CRITERIA.map((criterion,index) => ({
       key:criterion.key,name:criterion.name,officialWeight:criterion.weight,
