@@ -783,17 +783,6 @@
         בשלב הראשון משווים בין שלושה רעיונות שהוקצו בדגימה מאוזנת — 18 החלטות. בשלב השני משווים בין ששת הקריטריונים עצמם — 15 החלטות נוספות. האתר מציג במקביל דירוג רשמי לפי משקלי הקול הקורא ודירוג ניסויי לפי העדפות הצוות; המשקלים הרשמיים אינם משתנים.
       </div>
 
-      <section class="criterion-weight-overview" aria-labelledby="criterionWeightOverviewTitle">
-        <div class="criterion-weight-overview-head">
-          <div><span class="meta">שני תרחישים במקביל</span><h3 id="criterionWeightOverviewTitle">משקלי הקריטריונים</h3></div>
-          <span id="criterionWeightOverviewStatus" class="pill">טוען את העדפות הצוות…</span>
-        </div>
-        <p class="note">העמודה הרשמית נשארת קבועה. העמודה השנייה מחושבת מהשוואות הקריטריונים של חברי הצוות.</p>
-        <div id="criterionWeightOverviewTable" class="criterion-weight-overview-table">
-          <div class="calculation-empty">טוען את משקלי הקריטריונים מהגיליון המשותף…</div>
-        </div>
-      </section>
-
       <details class="criteria-guide" open>
         <summary>משמעות הקריטריונים לפי הקול הקורא של משרד החדשנות, המדע והטכנולוגיה</summary>
         <div class="criteria-guide-grid" id="criteriaGuide"></div>
@@ -858,6 +847,16 @@
       <details class="calculation-details" id="calculationDetails">
         <summary>פירוט חישובי AHP ויחס העקביות</summary>
         <div class="calculation-body">
+          <section class="criterion-weight-overview" aria-labelledby="criterionWeightOverviewTitle">
+            <div class="criterion-weight-overview-head">
+              <div><span class="meta">שני תרחישים במקביל</span><h3 id="criterionWeightOverviewTitle">משקלי הקריטריונים</h3></div>
+              <span id="criterionWeightOverviewStatus" class="pill">טוען את העדפות הצוות…</span>
+            </div>
+            <p class="note">העמודה הרשמית נשארת קבועה. העמודה השנייה מחושבת מהשוואות הקריטריונים של חברי הצוות.</p>
+            <div id="criterionWeightOverviewTable" class="criterion-weight-overview-table">
+              <div class="calculation-empty">טוען את משקלי הקריטריונים מהגיליון המשותף…</div>
+            </div>
+          </section>
           <p class="calculation-intro">כאן אפשר לראות כיצד ההשוואות הזוגיות הופכות למשקלים ולציון סופי. יחס עקביות (CR) עד 0.10 נחשב תקין; ערך גבוה יותר מצביע על השוואות שכדאי לבדוק שוב.</p>
           <div class="calculation-controls">
             <label for="calculationScope">דירוג לחישוב
@@ -1167,7 +1166,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=rtl-slider-direction-20260715"></script>
+<script src="ahp-ranking.js?v=weights-inside-ahp-details-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>
