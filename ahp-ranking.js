@@ -129,10 +129,13 @@ function assignmentForRater(name){
 }
 
 function pairKey(a,b){ return JSON.stringify([a.id,b.id]); }
+function criterionPairKey(a,b){ return JSON.stringify([a.key,b.key]); }
+function criterionPairs(){ return pairsForIdeas(AHP_CRITERIA); }
 function emptyComparisons(assignment=[]){
   return {
     ...Object.fromEntries(AHP_CRITERIA.map(c => [c.key,{}])),
     _assignment:assignment.map(String),
+    _criteriaComparisons:{},
     _rationale:"",
     _method:"balanced-three-ideas-v1"
   };
@@ -142,6 +145,12 @@ function sanitizeComparisons(value){
   const clean = emptyComparisons(Array.isArray(value?._assignment) ? value._assignment : []);
   clean._rationale = String(value?._rationale || "").slice(0,5000);
   clean._method = String(value?._method || "balanced-three-ideas-v1");
+  if(value?._criteriaComparisons && typeof value._criteriaComparisons === "object"){
+    Object.entries(value._criteriaComparisons).forEach(([key,ratio]) => {
+      const n = Number(ratio);
+      if(Number.isFinite(n) && n > 0) clean._criteriaComparisons[key] = n;
+    });
+  }
   AHP_CRITERIA.forEach(c => {
     const source = value?.[c.key];
     if(source && typeof source === "object"){
@@ -161,6 +170,7 @@ function comparisonsForAssignment(value,assignment){
   const clean = emptyComparisons(assignment);
   if(!sameAssignment) return clean;
   clean._rationale = source._rationale;
+  clean._criteriaComparisons = {...source._criteriaComparisons};
   const assignedIdeas = rankableIdeas().filter(idea => assignment.includes(String(idea.id)));
   const allowed = new Set(pairsForIdeas(assignedIdeas).map(([a,b]) => pairKey(a,b)));
   AHP_CRITERIA.forEach(criterion => {
@@ -378,6 +388,63 @@ function renderProgress(){
   $("#ahpProgressText").textContent = `${completed} מתוך ${total} השוואות`;
 }
 
+function importanceDescription(index,a,b){
+  if(index === 4) return "שווים בחשיבות";
+  const strengths = ["חשוב באופן קיצוני","חשוב מאוד","חשוב בבירור","חשוב מעט"];
+  return index < 4 ? `${a.short} ${strengths[index]}` : `${b.short} ${strengths[8-index]}`;
+}
+
+function criterionPreferenceRow(a,b){
+  const key = criterionPairKey(a,b);
+  const current = activeRating.comparisons._criteriaComparisons[key];
+  const answered = Number(current) > 0;
+  const index = sliderIndexForRatio(current);
+  return `<section class="criterion-preference-row ${answered?"answered":""}" data-criteria-pair='${escapeHtml(key)}'>
+    <div class="criterion-preference-head">
+      <div><strong>${escapeHtml(a.short)}</strong><span>${escapeHtml(a.points[0])}</span></div>
+      <b>מול</b>
+      <div><strong>${escapeHtml(b.short)}</strong><span>${escapeHtml(b.points[0])}</span></div>
+    </div>
+    <span class="criterion-value" data-criteria-pair-value='${escapeHtml(key)}'>${answered?escapeHtml(importanceDescription(index,a,b)):"טרם דורג"}</span>
+    <input class="criterion-slider criteria-weight-slider" dir="ltr" type="range" min="0" max="8" step="1" value="${index}" data-criteria-a="${a.key}" data-criteria-b="${b.key}" aria-label="חשיבות ${escapeHtml(a.short)} מול ${escapeHtml(b.short)}">
+    <div class="slider-labels"><span>${escapeHtml(a.short)} חשוב יותר</span><span>שווים</span><span>${escapeHtml(b.short)} חשוב יותר</span></div>
+  </section>`;
+}
+
+function setCriterionPreference(aKey,bKey,index){
+  if(!activeRating) return;
+  const a = AHP_CRITERIA.find(item => item.key === aKey);
+  const b = AHP_CRITERIA.find(item => item.key === bKey);
+  if(!a || !b) return;
+  const key = criterionPairKey(a,b);
+  activeRating.comparisons._criteriaComparisons[key] = SLIDER_RATIOS[index];
+  saveActiveRatingLocally();
+  renderCriterionPreferenceProgress();
+  const row = $$('[data-criteria-pair]').find(element => element.dataset.criteriaPair === key);
+  const value = $$('[data-criteria-pair-value]').find(element => element.dataset.criteriaPairValue === key);
+  row?.classList.add("answered");
+  if(value) value.textContent = importanceDescription(index,a,b);
+  renderAhpResults();
+}
+
+function renderCriterionPreferenceProgress(){
+  if(!activeRating) return;
+  const values = activeRating.comparisons._criteriaComparisons || {};
+  const completed = criterionPairs().filter(([a,b]) => Number(values[criterionPairKey(a,b)]) > 0).length;
+  $("#criteriaWeightProgress").max = criterionPairs().length;
+  $("#criteriaWeightProgress").value = completed;
+  $("#criteriaWeightProgressText").textContent = `${completed} מתוך ${criterionPairs().length} השוואות`;
+}
+
+function renderCriterionPreferences(){
+  if(!activeRating) return;
+  $("#criteriaPreferenceList").innerHTML = criterionPairs().map(([a,b]) => criterionPreferenceRow(a,b)).join("");
+  renderCriterionPreferenceProgress();
+  $$('[data-criteria-a][data-criteria-b]').forEach(slider => slider.addEventListener("input",event => {
+    setCriterionPreference(event.target.dataset.criteriaA,event.target.dataset.criteriaB,Number(event.target.value));
+  }));
+}
+
 function solveLinearSystem(matrix,vector){
   const n = vector.length;
   const augmented = matrix.map((row,index) => [...row,vector[index]]);
@@ -466,21 +533,84 @@ function priorityForCriterion(record,criterion){
   };
 }
 
+function criterionWeightPriority(record){
+  const items = AHP_CRITERIA;
+  const n = items.length;
+  const values = record?.comparisons?._criteriaComparisons || {};
+  const matrix = Array.from({length:n},(_,i) => Array.from({length:n},(_,j) => i===j ? 1 : null));
+  const observations = [];
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const ratio = Number(values[criterionPairKey(items[i],items[j])]);
+      if(!(ratio > 0)) continue;
+      matrix[i][j] = ratio;
+      matrix[j][i] = 1/ratio;
+      observations.push({i,j,ratio,logRatio:Math.log(ratio)});
+    }
+  }
+  if(observations.length < n-1) return null;
+  const adjacency = Array.from({length:n},() => []);
+  observations.forEach(({i,j}) => { adjacency[i].push(j); adjacency[j].push(i); });
+  const reached = new Set([0]);
+  const queue = [0];
+  while(queue.length){
+    const current = queue.shift();
+    adjacency[current].forEach(next => { if(!reached.has(next)){ reached.add(next); queue.push(next); } });
+  }
+  if(reached.size !== n) return null;
+
+  const laplacian = Array.from({length:n},() => Array(n).fill(0));
+  const rhs = Array(n).fill(0);
+  observations.forEach(({i,j,logRatio}) => {
+    laplacian[i][i] += 1; laplacian[j][j] += 1;
+    laplacian[i][j] -= 1; laplacian[j][i] -= 1;
+    rhs[i] += logRatio; rhs[j] -= logRatio;
+  });
+  const logWeights = solveLinearSystem(laplacian.slice(0,n-1).map(row => row.slice(0,n-1)),rhs.slice(0,n-1));
+  if(!logWeights) return null;
+  logWeights.push(0);
+  const raw = logWeights.map(Math.exp);
+  const rawSum = raw.reduce((sum,value) => sum+value,0);
+  const weights = raw.map(value => value/rawSum);
+  const residual = Math.sqrt(observations.reduce((sum,item) => {
+    const error = logWeights[item.i]-logWeights[item.j]-item.logRatio;
+    return sum+error*error;
+  },0)/observations.length);
+  const complete = observations.length === n*(n-1)/2;
+  let lambdaMax = null, ci = null, ri = null, consistency = null;
+  if(complete){
+    lambdaMax = matrix.reduce((total,row,i) => {
+      const weightedRow = row.reduce((sum,value,j) => sum+value*weights[j],0);
+      return total+weightedRow/weights[i];
+    },0)/n;
+    ci = Math.max(0,(lambdaMax-n)/(n-1));
+    ri = 1.24;
+    consistency = ci/ri;
+  }
+  return {weights,matrix,lambdaMax,ci,ri,consistency,complete,residual,observations:observations.length};
+}
+
 function weightForIdea(result,idea){
   const index = result.ideaIds.indexOf(String(idea.id));
   return index >= 0 ? result.weights[index] : 0;
 }
 
-function overallRanking(priorities,ideas=rankableIdeas()){
+function overallRanking(priorities,ideas=rankableIdeas(),criterionWeights=AHP_CRITERIA.map(criterion => criterion.weight)){
   if(priorities.some(result => !result)) return null;
   return ideas.map(idea => ({
     idea,
-    score:AHP_CRITERIA.reduce((sum,criterion,cIndex) => sum + weightForIdea(priorities[cIndex],idea)*criterion.weight,0)
+    score:AHP_CRITERIA.reduce((sum,criterion,cIndex) => sum + weightForIdea(priorities[cIndex],idea)*criterionWeights[cIndex],0)
   })).sort((a,b) => b.score-a.score);
 }
 
 function rankingHtml(ranking){
   return `<ol class="ranking-list">${ranking.map((row,index) => `<li><span>${index+1}. ${escapeHtml(row.idea.ideaName || "ללא שם")}</span><strong>${row.score.toFixed(1)}%</strong></li>`).join("")}</ol>`;
+}
+
+function criterionWeightChips(result,official=false){
+  const weights = official ? AHP_CRITERIA.map(criterion => criterion.weight/100) : result?.weights;
+  if(!weights) return "";
+  return `<div class="weight-chips">${AHP_CRITERIA.map((criterion,index) => `<span class="weight-chip">${escapeHtml(criterion.short)} <strong>${(weights[index]*100).toFixed(1)}%</strong></span>`).join("")}</div>`;
 }
 
 function aggregateTeamRecord(){
@@ -501,7 +631,15 @@ function aggregateTeamRecord(){
       if(ratios.length) aggregate[criterion.key][key] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
     });
   });
-  return {raterName:"דירוג הצוות", comparisons:aggregate, completedRaters, pairCounts};
+  const completedCriterionWeightRaters = sharedRatings.filter(record => criterionPairs().every(([a,b]) => Number(record.comparisons?._criteriaComparisons?.[criterionPairKey(a,b)]) > 0)).length;
+  const criterionPairCounts = {};
+  criterionPairs().forEach(([a,b]) => {
+    const key = criterionPairKey(a,b);
+    const ratios = sharedRatings.map(record => Number(record.comparisons?._criteriaComparisons?.[key])).filter(value => value > 0);
+    criterionPairCounts[key] = ratios.length;
+    if(ratios.length) aggregate._criteriaComparisons[key] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
+  });
+  return {raterName:"דירוג הצוות", comparisons:aggregate, completedRaters, pairCounts, completedCriterionWeightRaters, criterionPairCounts};
 }
 
 function aggregateTeamPriorities(){
@@ -552,6 +690,26 @@ function overallCalculationHtml(priorities,ideas=rankableIdeas()){
   </section>`;
 }
 
+function criterionWeightsDetailHtml(scope){
+  const result = criterionWeightPriority(scope.record);
+  if(!result){
+    return `<section class="overall-calculation"><h4>משקלי הקריטריונים בשני התרחישים</h4><div class="calculation-empty">עדיין אין רשת השוואות מחוברת בין ששת הקריטריונים.</div></section>`;
+  }
+  const rows = AHP_CRITERIA.map((criterion,index) => {
+    const generated = result.weights[index]*100;
+    return `<tr><td>${escapeHtml(criterion.name)}</td><td>${fixed(criterion.weight,1)}%</td><td><strong>${fixed(generated,1)}%</strong></td><td>${generated-criterion.weight>=0?"+":""}${fixed(generated-criterion.weight,1)}</td></tr>`;
+  }).join("");
+  const status = result.consistency == null
+    ? `המטריצה חלקית; CR קלאסי אינו זמין. שגיאת LLSM: ${fixed(result.residual,3)}.`
+    : `יחס עקביות CR: ${fixed(result.consistency,3)}${result.consistency>.10?" — מעל הסף, מומלץ לבדוק את השוואות הקריטריונים":" — תקין"}.`;
+  return `<section class="overall-calculation">
+    <h4>משקלי הקריטריונים בשני התרחישים</h4>
+    <p class="note">התרחיש הרשמי נשאר ללא שינוי. תרחיש העדפות הצוות נגזר מהשוואות הקריטריונים.</p>
+    <div class="calculation-table-wrap"><table class="calculation-table"><thead><tr><th>קריטריון</th><th>משקל רשמי</th><th>משקל לפי העדפות</th><th>הפרש בנקודות אחוז</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="scenario-consistency">${status}</div>
+  </section>`;
+}
+
 function renderCalculationDetails(){
   const scopeSelect = $("#calculationScope");
   const criterionSelect = $("#calculationCriterion");
@@ -570,8 +728,9 @@ function renderCalculationDetails(){
   const rationaleHtml = scopeRationale
     ? `<section class="rating-rationale-display"><strong>נימוקי המדרג/ת</strong><p>${escapeHtml(scopeRationale)}</p></section>`
     : "";
+  const criterionWeightsHtml = criterionWeightsDetailHtml(scope);
   if(!result){
-    content.innerHTML = `${rationaleHtml}<div class="calculation-empty">אין עדיין רשת השוואות מחוברת לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities,ideasForRecord(scope.record))}`;
+    content.innerHTML = `${rationaleHtml}${criterionWeightsHtml}<div class="calculation-empty">אין עדיין רשת השוואות מחוברת לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities,ideasForRecord(scope.record))}`;
     return;
   }
 
@@ -589,7 +748,7 @@ function renderCalculationDetails(){
   const methodFormula = result.complete
     ? "GMᵢ = (Π aᵢⱼ)^(1/n) · wᵢ = GMᵢ / ΣGM · CI = (λmax − n)/(n − 1) · CR = CI / RI"
     : "min Σ [ ln(aᵢⱼ) − ln(wᵢ) + ln(wⱼ) ]² · normalize Σwᵢ = 1";
-  content.innerHTML = `${rationaleHtml}<section class="criterion-calculation">
+  content.innerHTML = `${rationaleHtml}${criterionWeightsHtml}<section class="criterion-calculation">
     <h4>${escapeHtml(criterion.name)} · משקל רשמי ${criterion.weight}%</h4>
     ${teamNote}
     <div class="calculation-summary">
@@ -617,6 +776,7 @@ function calculationAuditData(){
     generatedAt:new Date().toISOString(),
     scope:scope.label,
     officialWeights:Object.fromEntries(AHP_CRITERIA.map(criterion => [criterion.name,criterion.weight])),
+    preferenceWeights:criterionWeightPriority(scope.record),
     rationale:scope.record.rationale || scope.record.comparisons?._rationale || EXERCISE_RATIONALES.get(normalizedRaterName(scope.record.raterName)) || "",
     ideas:scopeIdeas.map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
     criteria:AHP_CRITERIA.map((criterion,index) => ({
@@ -629,7 +789,9 @@ function calculationAuditData(){
 
 function exportCalculationCsv(){
   const data = calculationAuditData();
-  const rows = [["דירוג",data.scope],["נוצר בתאריך",data.generatedAt],[],["קריטריון","משקל רשמי","רעיון","משקל מקומי","תרומה לציון הכולל","lambda max","CI","RI","CR"]];
+  const rows = [["דירוג",data.scope],["נוצר בתאריך",data.generatedAt],[],["משקלי קריטריונים"],["קריטריון","משקל רשמי","משקל לפי העדפות"]];
+  AHP_CRITERIA.forEach((criterion,index) => rows.push([criterion.name,criterion.weight,data.preferenceWeights?.weights?.[index] != null ? data.preferenceWeights.weights[index]*100 : "לא הושלם"]));
+  rows.push([], ["קריטריון","משקל רשמי","רעיון","משקל מקומי","תרומה לציון הכולל","lambda max","CI","RI","CR"]);
   data.criteria.forEach(criterion => {
     if(criterion.incomplete){ rows.push([criterion.name,criterion.officialWeight,"לא הושלם"]); return; }
     data.ideas.forEach((idea,index) => rows.push([criterion.name,criterion.officialWeight,idea.name,criterion.weights[index],criterion.weights[index]*criterion.officialWeight,criterion.lambdaMax,criterion.ci,criterion.ri,criterion.consistency]));
@@ -652,9 +814,22 @@ function renderAhpResults(){
       const warning = result.consistency > .10;
       return `<div class="${warning?"consistency-warning":""}">${escapeHtml(AHP_CRITERIA[index].short)}: יחס עקביות ${result.consistency.toFixed(2)}${warning?" — מומלץ לבדוק השוואות סותרות":" — תקין"}</div>`;
     }).join("");
+    const personalCriterionWeights = criterionWeightPriority(activeRating);
+    $("#personalCriterionWeights").innerHTML = personalCriterionWeights
+      ? `<strong>המשקלים שנוצרו מהעדפותיך:</strong>${criterionWeightChips(personalCriterionWeights)}<div class="scenario-consistency">${personalCriterionWeights.consistency == null ? "המטריצה עדיין חלקית; CR אינו זמין." : `יחס עקביות אישי: ${personalCriterionWeights.consistency.toFixed(3)}${personalCriterionWeights.consistency>.10?" — מומלץ לבדוק את ההשוואות":" — תקין"}`}</div>`
+      : "המשקלים האישיים יוצגו לאחר יצירת רשת השוואות מחוברת בין הקריטריונים.";
   }
-  const team = overallRanking(aggregateTeamPriorities());
-  $("#teamRanking").innerHTML = team ? rankingHtml(team) : `<span class="note">דירוג הצוות יוצג כאשר יהיה לפחות דירוג משותף מלא בכל קריטריון.</span>`;
+  const teamRecord = aggregateTeamRecord();
+  const teamPriorities = AHP_CRITERIA.map(criterion => priorityForCriterion(teamRecord,criterion));
+  const officialTeam = overallRanking(teamPriorities);
+  $("#teamRanking").innerHTML = officialTeam ? `${rankingHtml(officialTeam)}${criterionWeightChips(null,true)}` : `<span class="note">דירוג הצוות יוצג כאשר תהיה רשת השוואות מחוברת בכל קריטריון.</span>`;
+  const preferenceWeights = criterionWeightPriority(teamRecord);
+  const preferenceTeam = preferenceWeights ? overallRanking(teamPriorities,rankableIdeas(),preferenceWeights.weights.map(value => value*100)) : null;
+  $("#preferenceTeamRanking").innerHTML = preferenceTeam ? rankingHtml(preferenceTeam) : `<span class="note">הדירוג יוצג לאחר שתיווצר רשת השוואות מחוברת בין הקריטריונים.</span>`;
+  const criterionCoverage = criterionPairs().filter(([a,b]) => Number(teamRecord.comparisons._criteriaComparisons[criterionPairKey(a,b)]) > 0).length;
+  $("#preferenceWeightsSummary").innerHTML = preferenceWeights
+    ? `${criterionWeightChips(preferenceWeights)}<div class="scenario-consistency">כיסוי: ${criterionCoverage} מתוך ${criterionPairs().length} זוגות · ${teamRecord.completedCriterionWeightRaters} מדרגים השלימו את כל ההשוואות · ${preferenceWeights.consistency == null ? `מטריצה חלקית; שגיאת LLSM ${fixed(preferenceWeights.residual,3)}` : `CR צוותי ${fixed(preferenceWeights.consistency,3)}${preferenceWeights.consistency>.10?" — מעל הסף":" — תקין"}`}</div>`
+    : `<div class="note">כיסוי השוואות בין הקריטריונים: ${criterionCoverage} מתוך ${criterionPairs().length}.</div>`;
   $("#sharedRaters").textContent = sharedRatings.length
     ? `${sharedRatings.length} מדרגים שמרו נתונים: ${sharedRatings.map(r => r.raterName).join(", ")}`
     : "עדיין לא נשמרו דירוגים משותפים.";
@@ -667,6 +842,7 @@ function renderAhpWorkspace(){
   $("#ratingRationale").value = activeRating.comparisons._rationale || "";
   renderProgress();
   renderAllCriteriaPairCard();
+  renderCriterionPreferences();
   renderAhpResults();
   const pairs = ratingPairs();
   $("#previousPair").disabled = !pairs.length || activePairIndex===0;
