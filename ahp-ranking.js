@@ -50,8 +50,7 @@ function rankableIdeas(){
   return cachedIdeas.filter(item => item?.id).slice().sort((a,b) => String(a.id).localeCompare(String(b.id)));
 }
 
-function ideaPairs(){
-  const items = rankableIdeas();
+function pairsForIdeas(items){
   const pairs = [];
   for(let i=0;i<items.length;i++){
     for(let j=i+1;j<items.length;j++) pairs.push([items[i],items[j]]);
@@ -59,11 +58,82 @@ function ideaPairs(){
   return pairs;
 }
 
+function ideaPairs(){ return pairsForIdeas(rankableIdeas()); }
+
+const BALANCED_FIVE_IDEA_BLOCKS = [
+  [0,1,2],
+  [0,3,4],
+  [0,1,4],
+  [1,2,3],
+  [2,3,4]
+];
+
+const EXERCISE_RATER_BLOCKS = new Map([
+  ["חוקר",0],
+  ["נציג משרד התחבורה",1],
+  ["נציג עמותת אור ירוק",2],
+  ["הורה",3],
+  ["נהג צעיר",4]
+]);
+
+function storedAssignment(record){
+  const validIds = new Set(rankableIdeas().map(idea => String(idea.id)));
+  const ids = Array.isArray(record?.comparisons?._assignment)
+    ? record.comparisons._assignment.map(String).filter(id => validIds.has(id))
+    : [];
+  return ids.length >= Math.min(3,validIds.size) ? ids.slice(0,Math.min(3,validIds.size)) : [];
+}
+
+function ideasForRecord(record){
+  const ideas = rankableIdeas();
+  const assignment = storedAssignment(record);
+  if(!assignment.length) return ideas;
+  const selected = new Set(assignment);
+  return ideas.filter(idea => selected.has(String(idea.id)));
+}
+
+function ratingPairs(record=activeRating){ return pairsForIdeas(ideasForRecord(record)); }
+
+function blockUsage(){
+  const ideas = rankableIdeas();
+  return BALANCED_FIVE_IDEA_BLOCKS.map(block => {
+    const ids = block.map(index => String(ideas[index]?.id));
+    return sharedRatings.filter(record => {
+      const assigned = storedAssignment(record);
+      return assigned.length === ids.length && ids.every(id => assigned.includes(id));
+    }).length;
+  });
+}
+
+function assignmentForRater(name){
+  const ideas = rankableIdeas();
+  if(ideas.length <= 3) return ideas.map(idea => String(idea.id));
+  if(ideas.length === 5){
+    const knownBlock = EXERCISE_RATER_BLOCKS.get(normalizedRaterName(name));
+    const usage = blockUsage();
+    const blockIndex = Number.isInteger(knownBlock)
+      ? knownBlock
+      : usage.indexOf(Math.min(...usage));
+    return BALANCED_FIVE_IDEA_BLOCKS[blockIndex].map(index => String(ideas[index].id));
+  }
+  const start = Math.abs([...normalizedRaterName(name)].reduce((sum,ch) => sum+ch.charCodeAt(0),0)) % ideas.length;
+  return [0,1,2].map(offset => String(ideas[(start+offset)%ideas.length].id));
+}
+
 function pairKey(a,b){ return JSON.stringify([a.id,b.id]); }
-function emptyComparisons(){ return Object.fromEntries(AHP_CRITERIA.map(c => [c.key,{}])); }
+function emptyComparisons(assignment=[]){
+  return {
+    ...Object.fromEntries(AHP_CRITERIA.map(c => [c.key,{}])),
+    _assignment:assignment.map(String),
+    _rationale:"",
+    _method:"balanced-three-ideas-v1"
+  };
+}
 
 function sanitizeComparisons(value){
-  const clean = emptyComparisons();
+  const clean = emptyComparisons(Array.isArray(value?._assignment) ? value._assignment : []);
+  clean._rationale = String(value?._rationale || "").slice(0,5000);
+  clean._method = String(value?._method || "balanced-three-ideas-v1");
   AHP_CRITERIA.forEach(c => {
     const source = value?.[c.key];
     if(source && typeof source === "object"){
@@ -72,6 +142,23 @@ function sanitizeComparisons(value){
         if(Number.isFinite(n) && n > 0) clean[c.key][key] = n;
       });
     }
+  });
+  return clean;
+}
+
+function comparisonsForAssignment(value,assignment){
+  const source = sanitizeComparisons(value);
+  const previous = storedAssignment({comparisons:source});
+  const sameAssignment = previous.length === assignment.length && assignment.every(id => previous.includes(String(id)));
+  const clean = emptyComparisons(assignment);
+  if(!sameAssignment) return clean;
+  clean._rationale = source._rationale;
+  const assignedIdeas = rankableIdeas().filter(idea => assignment.includes(String(idea.id)));
+  const allowed = new Set(pairsForIdeas(assignedIdeas).map(([a,b]) => pairKey(a,b)));
+  AHP_CRITERIA.forEach(criterion => {
+    Object.entries(source[criterion.key]).forEach(([key,value]) => {
+      if(allowed.has(key)) clean[criterion.key][key] = value;
+    });
   });
   return clean;
 }
@@ -133,7 +220,7 @@ function renderCriteriaGuide(){
 }
 
 function completedForCriterion(record, criterion){
-  const pairs = ideaPairs();
+  const pairs = ratingPairs(record);
   const values = record?.comparisons?.[criterion.key] || {};
   return pairs.filter(([a,b]) => Number(values[pairKey(a,b)]) > 0).length;
 }
@@ -230,7 +317,7 @@ function setComparison(criterionKey,index,a,b){
 }
 
 function renderPairProgress(){
-  const pairs = ideaPairs();
+  const pairs = ratingPairs();
   if(!pairs.length) return;
   const [a,b] = pairs[activePairIndex];
   const answered = AHP_CRITERIA.filter(c => Number(activeRating.comparisons[c.key][pairKey(a,b)]) > 0).length;
@@ -239,7 +326,7 @@ function renderPairProgress(){
 }
 
 function renderAllCriteriaPairCard(){
-  const pairs = ideaPairs();
+  const pairs = ratingPairs();
   if(!pairs.length){
     $("#pairCard").innerHTML = `<div class="empty">נדרשים לפחות שני רעיונות כדי לבצע השוואה זוגית.</div>`;
     return;
@@ -274,46 +361,111 @@ function renderAllCriteriaPairCard(){
 }
 
 function renderProgress(){
-  const total = ideaPairs().length * AHP_CRITERIA.length;
+  const total = ratingPairs().length * AHP_CRITERIA.length;
   const completed = AHP_CRITERIA.reduce((sum,c) => sum + completedForCriterion(activeRating,c),0);
   $("#ahpProgress").max = Math.max(total,1);
   $("#ahpProgress").value = completed;
   $("#ahpProgressText").textContent = `${completed} מתוך ${total} השוואות`;
 }
 
+function solveLinearSystem(matrix,vector){
+  const n = vector.length;
+  const augmented = matrix.map((row,index) => [...row,vector[index]]);
+  for(let column=0;column<n;column++){
+    let pivot = column;
+    for(let row=column+1;row<n;row++){
+      if(Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) pivot = row;
+    }
+    if(Math.abs(augmented[pivot][column]) < 1e-10) return null;
+    [augmented[column],augmented[pivot]] = [augmented[pivot],augmented[column]];
+    const divisor = augmented[column][column];
+    for(let j=column;j<=n;j++) augmented[column][j] /= divisor;
+    for(let row=0;row<n;row++){
+      if(row === column) continue;
+      const factor = augmented[row][column];
+      for(let j=column;j<=n;j++) augmented[row][j] -= factor*augmented[column][j];
+    }
+  }
+  return augmented.map(row => row[n]);
+}
+
 function priorityForCriterion(record,criterion){
-  const ideas = rankableIdeas();
+  const ideas = ideasForRecord(record);
   const n = ideas.length;
   if(!n) return null;
-  if(n === 1) return {weights:[1], matrix:[[1]], geometric:[1], lambdaMax:1, ci:0, ri:0, consistency:0};
+  if(n === 1) return {ideaIds:[String(ideas[0].id)],weights:[1],matrix:[[1]],geometric:[1],lambdaMax:1,ci:0,ri:0,consistency:0,complete:true,residual:0,observations:0};
   const values = record?.comparisons?.[criterion.key] || {};
-  const matrix = Array.from({length:n},() => Array(n).fill(1));
+  const matrix = Array.from({length:n},(_,i) => Array.from({length:n},(_,j) => i===j ? 1 : null));
+  const observations = [];
   for(let i=0;i<n;i++){
     for(let j=i+1;j<n;j++){
       const ratio = Number(values[pairKey(ideas[i],ideas[j])]);
-      if(!(ratio > 0)) return null;
+      if(!(ratio > 0)) continue;
       matrix[i][j] = ratio;
       matrix[j][i] = 1/ratio;
+      observations.push({i,j,ratio,logRatio:Math.log(ratio)});
     }
   }
-  const geometric = matrix.map(row => row.reduce((product,value) => product*value,1) ** (1/n));
-  const sum = geometric.reduce((a,b) => a+b,0);
-  const weights = geometric.map(value => value/sum);
-  const lambdaMax = matrix.reduce((total,row,i) => {
-    const weightedRow = row.reduce((s,value,j) => s+value*weights[j],0);
-    return total + weightedRow/weights[i];
-  },0)/n;
-  const ci = n > 2 ? Math.max(0,(lambdaMax-n)/(n-1)) : 0;
-  const ri = [0,0,0,0.58,0.90,1.12,1.24,1.32,1.41,1.45,1.49][n] || 1.49;
-  return {weights, matrix, geometric, lambdaMax, ci, ri, consistency:ri ? ci/ri : 0};
+  if(observations.length < n-1) return null;
+
+  const adjacency = Array.from({length:n},() => []);
+  observations.forEach(({i,j}) => { adjacency[i].push(j); adjacency[j].push(i); });
+  const reached = new Set([0]);
+  const queue = [0];
+  while(queue.length){
+    const current = queue.shift();
+    adjacency[current].forEach(next => { if(!reached.has(next)){ reached.add(next); queue.push(next); } });
+  }
+  if(reached.size !== n) return null;
+
+  const laplacian = Array.from({length:n},() => Array(n).fill(0));
+  const rhs = Array(n).fill(0);
+  observations.forEach(({i,j,logRatio}) => {
+    laplacian[i][i] += 1; laplacian[j][j] += 1;
+    laplacian[i][j] -= 1; laplacian[j][i] -= 1;
+    rhs[i] += logRatio; rhs[j] -= logRatio;
+  });
+  const reduced = laplacian.slice(0,n-1).map(row => row.slice(0,n-1));
+  const logWeights = solveLinearSystem(reduced,rhs.slice(0,n-1));
+  if(!logWeights) return null;
+  logWeights.push(0);
+  const raw = logWeights.map(Math.exp);
+  const rawSum = raw.reduce((sum,value) => sum+value,0);
+  const weights = raw.map(value => value/rawSum);
+  const residual = Math.sqrt(observations.reduce((sum,item) => {
+    const error = logWeights[item.i]-logWeights[item.j]-item.logRatio;
+    return sum+error*error;
+  },0)/observations.length);
+  const complete = observations.length === n*(n-1)/2;
+  let lambdaMax = null, ci = null, ri = null, consistency = null;
+  if(complete){
+    lambdaMax = matrix.reduce((total,row,i) => {
+      const weightedRow = row.reduce((sum,value,j) => sum+value*weights[j],0);
+      return total+weightedRow/weights[i];
+    },0)/n;
+    ci = n > 2 ? Math.max(0,(lambdaMax-n)/(n-1)) : 0;
+    ri = [0,0,0,0.58,0.90,1.12,1.24,1.32,1.41,1.45,1.49][n] || 1.49;
+    consistency = ri ? ci/ri : 0;
+  }
+  const geometric = complete
+    ? matrix.map(row => row.reduce((product,value) => product*value,1) ** (1/n))
+    : raw;
+  return {
+    ideaIds:ideas.map(idea => String(idea.id)),weights,matrix,geometric,
+    lambdaMax,ci,ri,consistency,complete,residual,observations:observations.length
+  };
 }
 
-function overallRanking(priorities){
+function weightForIdea(result,idea){
+  const index = result.ideaIds.indexOf(String(idea.id));
+  return index >= 0 ? result.weights[index] : 0;
+}
+
+function overallRanking(priorities,ideas=rankableIdeas()){
   if(priorities.some(result => !result)) return null;
-  const ideas = rankableIdeas();
-  return ideas.map((idea,index) => ({
+  return ideas.map(idea => ({
     idea,
-    score:AHP_CRITERIA.reduce((sum,criterion,cIndex) => sum + priorities[cIndex].weights[index]*criterion.weight,0)
+    score:AHP_CRITERIA.reduce((sum,criterion,cIndex) => sum + weightForIdea(priorities[cIndex],idea)*criterion.weight,0)
   })).sort((a,b) => b.score-a.score);
 }
 
@@ -325,16 +477,21 @@ function aggregateTeamRecord(){
   const pairs = ideaPairs();
   const aggregate = emptyComparisons();
   const completedRaters = {};
+  const pairCounts = {};
   AHP_CRITERIA.forEach(criterion => {
-    const completed = sharedRatings.filter(record => priorityForCriterion(record,criterion));
+    const completed = sharedRatings.filter(record => {
+      const assignedPairs = ratingPairs(record);
+      return assignedPairs.length && assignedPairs.every(([a,b]) => Number(record.comparisons?.[criterion.key]?.[pairKey(a,b)]) > 0);
+    });
     completedRaters[criterion.key] = completed.length;
-    if(!completed.length) return;
     pairs.forEach(([a,b]) => {
-      const ratios = completed.map(record => Number(record.comparisons[criterion.key][pairKey(a,b)]));
-      aggregate[criterion.key][pairKey(a,b)] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
+      const key = pairKey(a,b);
+      const ratios = sharedRatings.map(record => Number(record.comparisons?.[criterion.key]?.[key])).filter(value => value > 0);
+      pairCounts[`${criterion.key}:${key}`] = ratios.length;
+      if(ratios.length) aggregate[criterion.key][key] = ratios.reduce((product,value) => product*value,1) ** (1/ratios.length);
     });
   });
-  return {raterName:"דירוג הצוות", comparisons:aggregate, completedRaters};
+  return {raterName:"דירוג הצוות", comparisons:aggregate, completedRaters, pairCounts};
 }
 
 function aggregateTeamPriorities(){
@@ -359,6 +516,7 @@ function fixed(value,digits=3){
 }
 
 function matrixValue(value){
+  if(value == null) return "—";
   if(Math.abs(value-1)<.000001) return "1";
   return value >= 1 ? fixed(value,2) : fixed(value,3);
 }
@@ -367,13 +525,12 @@ function ideaKeyHtml(ideas){
   return `<div class="idea-key">${ideas.map((idea,index) => `<span><b class="idea-code">R${index+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</span>`).join("")}</div>`;
 }
 
-function overallCalculationHtml(priorities){
+function overallCalculationHtml(priorities,ideas=rankableIdeas()){
   if(priorities.some(result => !result)){
     return `<section class="overall-calculation"><h4>חישוב הציון הכולל</h4><div class="calculation-empty">הציון הכולל יוצג לאחר השלמת כל ההשוואות בכל ששת הקריטריונים.</div></section>`;
   }
-  const ideas = rankableIdeas();
   const rows = ideas.map((idea,ideaIndex) => {
-    const contributions = AHP_CRITERIA.map((criterion,cIndex) => priorities[cIndex].weights[ideaIndex]*criterion.weight);
+    const contributions = AHP_CRITERIA.map((criterion,cIndex) => weightForIdea(priorities[cIndex],idea)*criterion.weight);
     const total = contributions.reduce((sum,value) => sum+value,0);
     return `<tr><td><b class="idea-code">R${ideaIndex+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</td>${contributions.map(value => `<td>${fixed(value,2)}</td>`).join("")}<td><strong>${fixed(total,2)}%</strong></td></tr>`;
   }).join("");
@@ -399,45 +556,58 @@ function renderCalculationDetails(){
   const criterion = AHP_CRITERIA.find(item => item.key === calculationCriterionKey) || AHP_CRITERIA[0];
   const result = priorityForCriterion(scope.record,criterion);
   const priorities = AHP_CRITERIA.map(item => priorityForCriterion(scope.record,item));
+  const rationaleHtml = scope.record.comparisons?._rationale
+    ? `<section class="rating-rationale-display"><strong>נימוקי המדרג/ת</strong><p>${escapeHtml(scope.record.comparisons._rationale)}</p></section>`
+    : "";
   if(!result){
-    content.innerHTML = `<div class="calculation-empty">אין עדיין מספיק השוואות מלאות לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities)}`;
+    content.innerHTML = `${rationaleHtml}<div class="calculation-empty">אין עדיין רשת השוואות מחוברת לחישוב הקריטריון „${escapeHtml(criterion.short)}” עבור ${escapeHtml(scope.label)}.</div>${overallCalculationHtml(priorities,ideasForRecord(scope.record))}`;
     return;
   }
 
-  const ideas = rankableIdeas();
-  const warning = result.consistency > .10;
+  const ideas = ideasForRecord(scope.record);
+  const warning = result.consistency != null && result.consistency > .10;
   const matrixHead = `<tr><th>רעיון</th>${ideas.map((idea,index) => `<th title="${escapeHtml(idea.ideaName || "ללא שם")}">R${index+1}</th>`).join("")}</tr>`;
   const matrixRows = result.matrix.map((row,rowIndex) => `<tr><td><b class="idea-code">R${rowIndex+1}</b>${escapeHtml(ideas[rowIndex].ideaName || "ללא שם")}</td>${row.map(value => `<td>${matrixValue(value)}</td>`).join("")}</tr>`).join("");
   const weightRows = ideas.map((idea,index) => `<tr><td><b class="idea-code">R${index+1}</b>${escapeHtml(idea.ideaName || "ללא שם")}</td><td>${fixed(result.geometric[index],4)}</td><td><strong>${fixed(result.weights[index]*100,2)}%</strong></td><td>${fixed(result.weights[index]*criterion.weight,2)} נק׳</td></tr>`).join("");
-  const teamNote = scope.team ? `<p class="note">מטריצת הצוות נבנתה באמצעות ממוצע גאומטרי של ההשוואות של ${scope.record.completedRaters[criterion.key] || 0} מדרגים שהשלימו קריטריון זה.</p>` : "";
-  content.innerHTML = `<section class="criterion-calculation">
+  const observedPairs = ideaPairs().filter(([a,b]) => Number(scope.record.comparisons?.[criterion.key]?.[pairKey(a,b)]) > 0).length;
+  const teamNote = scope.team ? `<p class="note">מטריצת הצוות מאחדת כל זוג באמצעות ממוצע גאומטרי. בקריטריון זה כוסו ${observedPairs} מתוך ${ideaPairs().length} זוגות על ידי ${scope.record.completedRaters[criterion.key] || 0} מדרגים שהשלימו את השלישייה שלהם.</p>` : `<p class="note">דירוג אישי זה מבוסס על שלושת הרעיונות שהוקצו למדרג/ת.</p>`;
+  const crAvailable = result.consistency != null;
+  const consistencyStatus = crAvailable
+    ? (warning ? "CR גבוה מ־0.10 — מומלץ לעבור על השוואות סותרות בקריטריון זה." : "CR אינו גבוה מ־0.10 — רמת העקביות תקינה.")
+    : `המטריצה חלקית ולכן CR הקלאסי אינו זמין. שגיאת ההתאמה הלוגריתמית היא ${fixed(result.residual,3)}.`;
+  const methodFormula = result.complete
+    ? "GMᵢ = (Π aᵢⱼ)^(1/n) · wᵢ = GMᵢ / ΣGM · CI = (λmax − n)/(n − 1) · CR = CI / RI"
+    : "min Σ [ ln(aᵢⱼ) − ln(wᵢ) + ln(wⱼ) ]² · normalize Σwᵢ = 1";
+  content.innerHTML = `${rationaleHtml}<section class="criterion-calculation">
     <h4>${escapeHtml(criterion.name)} · משקל רשמי ${criterion.weight}%</h4>
     ${teamNote}
     <div class="calculation-summary">
-      <div class="calculation-metric"><span>λmax</span><strong>${fixed(result.lambdaMax,4)}</strong></div>
-      <div class="calculation-metric"><span>מדד עקביות CI</span><strong>${fixed(result.ci,4)}</strong></div>
-      <div class="calculation-metric"><span>מדד אקראי RI</span><strong>${fixed(result.ri,2)}</strong></div>
-      <div class="calculation-metric ${warning?"warning":"good"}"><span>יחס עקביות CR</span><strong>${fixed(result.consistency,3)}</strong></div>
+      <div class="calculation-metric"><span>λmax</span><strong>${result.lambdaMax == null ? "—" : fixed(result.lambdaMax,4)}</strong></div>
+      <div class="calculation-metric"><span>מדד עקביות CI</span><strong>${result.ci == null ? "—" : fixed(result.ci,4)}</strong></div>
+      <div class="calculation-metric"><span>מדד אקראי RI</span><strong>${result.ri == null ? "—" : fixed(result.ri,2)}</strong></div>
+      <div class="calculation-metric ${crAvailable?(warning?"warning":"good"):""}"><span>יחס עקביות CR</span><strong>${crAvailable ? fixed(result.consistency,3) : "לא זמין"}</strong></div>
     </div>
-    <div class="calculation-status ${warning?"warning":"good"}">${warning?"CR גבוה מ־0.10 — מומלץ לעבור על השוואות סותרות בקריטריון זה.":"CR אינו גבוה מ־0.10 — רמת העקביות תקינה."}</div>
-    <div class="calculation-formula">GMᵢ = (Π aᵢⱼ)^(1/n) · wᵢ = GMᵢ / ΣGM · CI = (λmax − n)/(n − 1) · CR = CI / RI</div>
+    <div class="calculation-status ${crAvailable?(warning?"warning":"good"):""}">${consistencyStatus}</div>
+    <div class="calculation-formula">${methodFormula}</div>
     <h4 style="margin-top:18px">מטריצת ההשוואות ההדדית</h4>
     <p class="note">ערך גדול מ־1 פירושו שרעיון השורה הועדף על רעיון העמודה; הערך ההפוך מופיע בצד השני של האלכסון.</p>
     ${ideaKeyHtml(ideas)}
     <div class="calculation-table-wrap"><table class="calculation-table"><thead>${matrixHead}</thead><tbody>${matrixRows}</tbody></table></div>
     <h4 style="margin-top:18px">המשקלים המקומיים בקריטריון</h4>
-    <div class="calculation-table-wrap"><table class="calculation-table"><thead><tr><th>רעיון</th><th>ממוצע גאומטרי</th><th>משקל מקומי</th><th>תרומה לציון הכולל</th></tr></thead><tbody>${weightRows}</tbody></table></div>
-  </section>${overallCalculationHtml(priorities)}`;
+    <div class="calculation-table-wrap"><table class="calculation-table"><thead><tr><th>רעיון</th><th>${result.complete?"ממוצע גאומטרי":"ערך LLSM יחסי"}</th><th>משקל מקומי</th><th>תרומה לציון הכולל</th></tr></thead><tbody>${weightRows}</tbody></table></div>
+  </section>${overallCalculationHtml(priorities,ideas)}`;
 }
 
 function calculationAuditData(){
   const scope = selectedCalculationScope();
+  const scopeIdeas = ideasForRecord(scope.record);
   const priorities = AHP_CRITERIA.map(criterion => priorityForCriterion(scope.record,criterion));
   return {
     generatedAt:new Date().toISOString(),
     scope:scope.label,
     officialWeights:Object.fromEntries(AHP_CRITERIA.map(criterion => [criterion.name,criterion.weight])),
-    ideas:rankableIdeas().map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
+    rationale:scope.record.comparisons?._rationale || "",
+    ideas:scopeIdeas.map((idea,index) => ({code:`R${index+1}`,id:idea.id,name:idea.ideaName})),
     criteria:AHP_CRITERIA.map((criterion,index) => ({
       key:criterion.key,name:criterion.name,officialWeight:criterion.weight,
       ...(priorities[index] ? priorities[index] : {incomplete:true})
@@ -463,10 +633,11 @@ function exportCalculationJson(){
 function renderAhpResults(){
   if(activeRating){
     const personal = AHP_CRITERIA.map(c => priorityForCriterion(activeRating,c));
-    const ranking = overallRanking(personal);
+    const ranking = overallRanking(personal,ideasForRecord(activeRating));
     $("#personalRanking").innerHTML = ranking ? rankingHtml(ranking) : `<span class="note">הדירוג יוצג לאחר השלמת כל ההשוואות.</span>`;
     $("#consistencyReport").innerHTML = personal.map((result,index) => {
       if(!result) return `<div>${escapeHtml(AHP_CRITERIA[index].short)}: טרם הושלם</div>`;
+      if(result.consistency == null) return `<div>${escapeHtml(AHP_CRITERIA[index].short)}: מטריצה חלקית — CR אינו זמין</div>`;
       const warning = result.consistency > .10;
       return `<div class="${warning?"consistency-warning":""}">${escapeHtml(AHP_CRITERIA[index].short)}: יחס עקביות ${result.consistency.toFixed(2)}${warning?" — מומלץ לבדוק השוואות סותרות":" — תקין"}</div>`;
     }).join("");
@@ -482,16 +653,17 @@ function renderAhpResults(){
 function renderAhpWorkspace(){
   if(!activeRating) return;
   $("#ahpWorkspace").classList.add("show");
+  $("#ratingRationale").value = activeRating.comparisons._rationale || "";
   renderProgress();
   renderAllCriteriaPairCard();
   renderAhpResults();
-  const pairs = ideaPairs();
+  const pairs = ratingPairs();
   $("#previousPair").disabled = !pairs.length || activePairIndex===0;
   $("#nextPair").disabled = !pairs.length || activePairIndex===pairs.length-1;
 }
 
 function movePair(direction){
-  const pairs = ideaPairs();
+  const pairs = ratingPairs();
   if(!pairs.length) return;
   activePairIndex = Math.max(0,Math.min(activePairIndex+direction,pairs.length-1));
   renderAhpWorkspace();
@@ -510,6 +682,11 @@ $("#calculationCriterion").addEventListener("change", event => {
 });
 $("#exportAhpCsv").addEventListener("click", exportCalculationCsv);
 $("#exportAhpJson").addEventListener("click", exportCalculationJson);
+$("#ratingRationale").addEventListener("input", event => {
+  if(!activeRating) return;
+  activeRating.comparisons._rationale = event.target.value.slice(0,5000);
+  saveActiveRatingLocally();
+});
 
 $("#startRating").addEventListener("click", () => {
   const name = $("#raterName").value.trim();
@@ -524,16 +701,20 @@ $("#startRating").addEventListener("click", () => {
   const shared = sharedRatings.find(row => normalizedRaterName(row.raterName) === normalizedRaterName(name));
   const local = localRatingFor(name);
   const source = [shared,local].filter(Boolean).sort((a,b) => String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")))[0];
+  const assignment = storedAssignment(source).length ? storedAssignment(source) : assignmentForRater(name);
   activeRating = {
     raterName:name,
     updatedAt:new Date().toISOString(),
-    comparisons:sanitizeComparisons(source?.comparisons)
+    comparisons:comparisonsForAssignment(source?.comparisons,assignment)
   };
-  const pairs = ideaPairs();
+  const pairs = ratingPairs();
   const missing = pairs.findIndex(([a,b]) => AHP_CRITERIA.some(c => !Number(activeRating.comparisons[c.key][pairKey(a,b)])));
   activePairIndex = missing >= 0 ? missing : 0;
   saveActiveRatingLocally();
-  setAhpStatus(source ? `הדירוג של ${name} נטען. אפשר להמשיך מהמקום שבו הופסק.` : `נפתח דירוג חדש עבור ${name}.`);
+  const ideaNames = ideasForRecord(activeRating).map(idea => idea.ideaName).join("; ");
+  setAhpStatus(source && storedAssignment(source).length
+    ? `הדירוג של ${name} נטען. אפשר להמשיך מהמקום שבו הופסק.`
+    : `הוקצו ל-${name} שלושה רעיונות בדגימה המאוזנת: ${ideaNames}.`);
   renderAhpWorkspace();
 });
 

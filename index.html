@@ -384,6 +384,8 @@
     .slider-labels span:nth-child(2){text-align:center}
     .slider-labels span:last-child{text-align:left}
     .ahp-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px}
+    .rating-rationale-field{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:13px;background:#f8fbfc}
+    .rating-rationale-field textarea{margin-top:6px}
     .ahp-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
     .result-panel{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
     .result-panel h3{margin-top:0}
@@ -421,6 +423,8 @@
     .overall-calculation h4,.criterion-calculation h4{margin:0 0 7px;color:var(--brand)}
     .calculation-actions{display:flex;flex-wrap:wrap;gap:8px}
     .calculation-empty{padding:18px;border:1px dashed #b8c8d2;border-radius:12px;color:var(--muted);text-align:center}
+    .rating-rationale-display{border-right:4px solid var(--brand);background:#f2f7fa;border-radius:10px;padding:12px 14px;margin-bottom:16px}
+    .rating-rationale-display p{white-space:pre-line;margin:5px 0 0}
     .note{
       color:var(--muted);
       font-size:.92rem;
@@ -742,7 +746,7 @@
       <h2>דירוג צוותי בהשוואה בין רעיונות</h2>
       <div class="ahp-intro">
         <strong>איך מדרגים?</strong>
-        בכל פעם מוצגים זה מול זה שני רעיונות, לכל אחד תקציר של עד 500 מילים. ביניהם מדרגים את אותו זוג בכל ששת הקריטריונים באמצעות סמנים. כדי לקבל דירוג AHP מלא יש להשלים את כל 10 זוגות הרעיונות — 60 החלטות קצרות בסך הכול. משקלי משרד המדע נשארים ללא שינוי.
+        לכל מדרג מוקצים שלושה מתוך חמשת הרעיונות בדגימה מאוזנת. בכל פעם מוצגים שניים משלושת הרעיונות, לכל אחד תקציר של עד 500 מילים, וביניהם מדרגים את כל ששת הקריטריונים. כל מדרג משלים 3 זוגות — 18 החלטות קצרות. שילוב ההקצאות מכסה את כל הרעיונות ומאפשר לחשב דירוג צוותי לחמישתם. משקלי משרד המדע נשארים ללא שינוי.
       </div>
 
       <details class="criteria-guide" open>
@@ -764,6 +768,11 @@
           <progress id="ahpProgress" max="1" value="0">0</progress>
         </div>
         <div id="pairCard" class="pair-card"></div>
+        <div class="field rating-rationale-field">
+          <label for="ratingRationale">נימוקים לדירוג</label>
+          <textarea id="ratingRationale" rows="4" placeholder="כתבו בקצרה מה היה חשוב לכם, מדוע העדפתם רעיונות מסוימים ומה היו ההסתייגויות המרכזיות."></textarea>
+          <span class="hint">הנימוק נשמר יחד עם הדירוג ומאפשר לצוות להבין את ההחלטות, לא רק את המספרים.</span>
+        </div>
         <div class="ahp-actions">
           <div>
             <button class="secondary" id="previousPair" type="button">זוג הרעיונות הקודם</button>
@@ -1098,7 +1107,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=calculation-details-20260715"></script>
+<script src="ahp-ranking.js?v=balanced-three-ideas-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>
