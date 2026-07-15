@@ -394,11 +394,12 @@
     .slider-labels{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;color:var(--muted);font-size:.75rem;margin-top:2px}
     .slider-labels span:nth-child(2){text-align:center}
     .slider-labels span:last-child{text-align:left}
-    .ahp-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px}
+    .ahp-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px;margin-top:14px}
     .rating-rationale-field{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:13px;background:#f8fbfc}
     .rating-rationale-field textarea{margin-top:6px}
     .ranking-stage{margin-top:20px;border-radius:18px;padding:18px}
     .idea-ranking-stage{border:2px solid var(--brand);background:#fff}
+    .stage-navigation{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
     .stage-heading{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
     .stage-badge{display:inline-grid;place-items:center;min-width:72px;border-radius:999px;padding:6px 12px;background:var(--brand);color:#fff;font-size:.82rem;font-weight:800}
     .stage-heading h3{margin:0;color:var(--brand)}
@@ -499,6 +500,7 @@
       .pair-head,.criterion-head{display:block}
       .stage-heading{display:block}
       .stage-badge{display:inline-grid;margin-bottom:9px}
+      .stage-navigation button{width:100%}
       .criteria-preference-title{display:block}
       .criterion-weight-overview-head{display:block}
       .criterion-weight-overview-head .pill{display:inline-block;margin-top:8px}
@@ -816,6 +818,10 @@
             <progress id="ahpProgress" max="1" value="0">0</progress>
           </div>
           <div id="pairCard" class="pair-card"></div>
+          <nav class="stage-navigation" aria-label="ניווט בין זוגות הרעיונות בשלב א׳">
+            <button class="secondary" id="previousPair" type="button">זוג הרעיונות הקודם</button>
+            <button class="secondary" id="nextPair" type="button">זוג הרעיונות הבא</button>
+          </nav>
         </section>
         <section class="criteria-preference-card" aria-labelledby="criteriaPreferenceStageTitle">
           <div class="criteria-preference-title stage-heading">
@@ -834,10 +840,6 @@
           <span class="hint">הנימוק נשמר יחד עם הדירוג ומאפשר לצוות להבין את ההחלטות, לא רק את המספרים.</span>
         </div>
         <div class="ahp-actions">
-          <div>
-            <button class="secondary" id="previousPair" type="button">זוג הרעיונות הקודם</button>
-            <button class="secondary" id="nextPair" type="button">זוג הרעיונות הבא</button>
-          </div>
           <button class="primary" id="saveSharedRating" type="button">שמירת הדירוג לצוות</button>
         </div>
       </div>
@@ -1182,7 +1184,7 @@
   updateProgress();
   renderIdeas();
 </script>
-<script src="ahp-ranking.js?v=smart-seven-criteria-pairs-20260715"></script>
+<script src="ahp-ranking.js?v=stage-a-navigation-20260715"></script>
 <!-- Pages build: complete-form-2026-07-13 -->
 </body>
 </html>
